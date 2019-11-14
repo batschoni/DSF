@@ -2,7 +2,7 @@
 
 library("tidyverse")
 library("ggmap") # to get coordinates from a address
-register_google(key = "AIzaSyCmgdDpY68t4ufDYMY-eR3Cgn5FQLnCtfI") # the service is free but requires email registration
+register_google(key = "") # the service is free but requires email registration
 
 library("tidyverse")
 
