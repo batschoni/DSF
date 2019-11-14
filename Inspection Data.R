@@ -1,18 +1,24 @@
-
 # install.packages("ggmap")
 
 library("tidyverse")
 library("ggmap") # to get coordinates from a address
 register_google(key = "AIzaSyCmgdDpY68t4ufDYMY-eR3Cgn5FQLnCtfI") # the service is free but requires email registration
 
+library("tidyverse")
+
 # downlaod and cleaning of inspection data
 #########################################################################################
+
 
 # Download the file
 inspections <- read.csv("https://data.ny.gov/api/views/d6dy-3h7r/rows.csv?accessType=DOWNLOAD", stringsAsFactors = FALSE)
 
 # Save it in the data folder
 save(inspections, file = "./data/Retail_Food_Store_Inspections.RData")
+
+
+inspections <- read.csv("https://data.ny.gov/api/views/d6dy-3h7r/rows.csv?accessType=DOWNLOAD", stringsAsFactors = FALSE)
+
 
 inspections <- as_tibble(inspections)
 
@@ -26,13 +32,17 @@ coord <- function(string_vector){
   string_vector <- strsplit(string_vector, "\\,")
   # keeps 1st split
   longitude <- sapply(string_vector, "[", 1)
+
   longitude <- as.numeric(longitude)
+
+
   # keeps 2nd element of previous split
   string_vector <- sapply(string_vector, "[", 2)
   # splits string at ")"
   string_vector <- strsplit(string_vector, "\\)")
   # keeps 1st split
   latitude <- sapply(string_vector, "[", 1)
+
   latitude <- as.numeric(latitude)
   location <- cbind(longitude, latitude)
   return(location)
@@ -74,6 +84,14 @@ inspections %>%
 ny_counties <-  c("New York", "Kings", "Bronx", "Richmond", "Queens")
 ny_inspections <- inspections[which(inspections$County %in% ny_counties),]
 table(is.na(ny_inspections$Longitude))
+
+
+summary(is.na(coord(inspections$Location)[,1]))
+
+
+
+save(inspections, file = "./data/Retail_Food_Store_Inspections.RData")
+
 
 #########################################################################################
 
