@@ -19,8 +19,8 @@ sample <- sample(c(TRUE, FALSE),
                  length(scraping_p_vector), replace = T, 
                  prob = c(0.03,0.97))
 scraping_p_vector = scraping_p_vector[sample]
-#scraping_p_vector = scraping_p_vector[1:10]
-#results_scraping = slice(results_scraping, 1:10)
+#scraping_p_vector = scraping_p_vector[1:1000]
+#scraping_parameter = slice(scraping_parameter, 1:1000)
 
 results_scraping = select(scraping_parameter, -searching)
 results_scraping = mutate(results_scraping, Reviews = rep(1, length(scraping_p_vector)), Number_of_Reviews = rep(1, length(scraping_p_vector)))
@@ -58,18 +58,19 @@ webscraping = function (input_vector) {
   
   end.time <- Sys.time()
   (time_parallel_computation = end.time - start.time)
+  results_scraping[,4] = as.numeric(str_remove(results_scraping[,4], "Google reviews" )) #removes "google reviews" string +  converts to numeric
+  results_scraping[,3] = as.numeric(results_scraping[,3])
   return(results_scraping)
 }
 results_scraping = webscraping(scraping_p_vector)
-results_scraping[,4] = as.numeric(str_remove(results_scraping[,4], "Google reviews" )) #removes "google reviews" string +  converts to numeric
-results_scraping[,3] = as.numeric(results_scraping[,3]) #converts class character to numeric
+ #converts class character to numeric
 #Saving the Review-Data in csv
 #write.csv(review, file="1000 with name-street-new-york.csv")
 
 
 length(which(results_scraping[,3] == 0))/length(scraping_p_vector)
 #1. 0.3837772 % keine Bewertung
-
+length(which(is.na(results_scraping[,4])))
 myclient$close()
 rD$server$stop()
 
