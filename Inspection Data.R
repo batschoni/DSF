@@ -8,6 +8,7 @@ inspections <- read.csv("https://data.ny.gov/api/views/d6dy-3h7r/rows.csv?access
 
 inspections <- as_tibble(inspections)
 
+
 # Function extracts the coordinates as two vectors
 coord <- function(string_vector){
   # splits character at "("
