@@ -6,8 +6,6 @@
 library(tidyverse)
 rm(list = ls())
 data = read.csv("Data/Data_food_inspections.csv")
-dem_data = read.csv("Data/Demographic_Statistics_By_Zip_Code.csv")
-dem_data2 = read.csv("Data/Demographics_By_Zip_code.csv")
 
 
 data = as_tibble(data)
@@ -21,5 +19,17 @@ data_unique = data %>%  #keep only the newest duplicates; possible with last fun
   group_by(Trade.Name) %>% 
   summarise_all(funs(last)) %>% 
   ungroup
+
+data_chains = data_unique %>% 
+  group_by(Owner.Name) %>% 
+  summarise(count = n())
+
+data_chains$count[which(data_chains$count == 1)] = 0
+data_chains$count[which(data_chains$count != 0)] = 1
+
+data_unique = inner_join(data_unique, data_chains, by = "Owner.Name")
+
+chains = data_unique
+chains[which()]
 
 write.csv(data_unique, file = "Data/Unique_data_food_inspections.csv") #save data as csv
