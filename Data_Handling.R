@@ -23,13 +23,3 @@ data_unique = data %>%  #keep only the newest duplicates; possible with last fun
   ungroup
 
 write.csv(data_unique, file = "Data/Unique_data_food_inspections.csv") #save data as csv
-
-
-#IF! only for City of New York -> here a join of the demographic data with original data
-dem_data = rename(dem_data, Zip.Code = JURISDICTION.NAME)
-joined = inner_join(county_ny, dem_data, by = NULL)
-joined2 = inner_join(data, dem_data2, by = NULL)
-
-data = data %>% 
-  group_by(Inspection.Grade) %>% 
-  summarise(n = n())
