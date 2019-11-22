@@ -132,3 +132,4 @@ inspectionsCen <- merge(inspectionsTrac, ny17Cen, by.x = "TractId", by.y = "Trac
 ny17county$`County per County` <- toupper(ny17county$`County per County`)
 inspectionsDem <- merge(inspectionsCen, ny17county, by.x = "County", by.y = "County per County")
 
+filter(inspectionsDem, c("NEW YOKR", "KINGS COUNTY", "QUEENS", "RICHMOND"))
