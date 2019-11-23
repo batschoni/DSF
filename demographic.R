@@ -133,3 +133,6 @@ ny17county$`County per County` <- toupper(ny17county$`County per County`)
 inspectionsDem <- merge(inspectionsCen, ny17county, by.x = "County", by.y = "County per County")
 
 filter(inspectionsDem, c("NEW YOKR", "KINGS COUNTY", "QUEENS", "RICHMOND"))
+
+write.csv(inspectionsDem, file = gzfile("C:/Users/andre/Documents/HSG/W-DS/inspectionsDem.cvs.gz"))
+INSPECTIONS <- read.csv("~/HSG/W-DS/inspectionsDem.cvs.gz")
