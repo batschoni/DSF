@@ -234,7 +234,7 @@ table(ny_inspect_data$Inspection.Grade)
 subway_data <- read.csv("https://data.ny.gov/api/views/i9wp-a4ja/rows.csv?accessType=DOWNLOAD&sorting=true", stringsAsFactors = FALSE)
 
 # Save it in the data folder
-save(subway_data, file = "./data/inspect_data.RData")
+#save(subway_data, file = "./data/inspect_data.RData")
 
 subway_data <- as_tibble(subway_data)
 
