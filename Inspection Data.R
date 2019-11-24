@@ -1,6 +1,6 @@
 # install.packages("ggmap")
 # install.packages("raster")
-library("tidyverse")
+library(tidyverse)
 library("ggmap") # to get coordinates from a address
 register_google(key = "AIzaSyB5prnz72uLxw3jlR7yUYr0qLDw62ZCot4") # the service is free but requires email registration
 # Library for spatial data
@@ -186,8 +186,10 @@ test <- merge(ny_inspect_data, demographic_data, by = "Street")
 # Add Google Ratings
 #########################################################################################
 google_ratings <-  read.csv("data/results_scraping.csv")
+google_ratings <- dplyr::select(google_ratings, -X)
+inspect_data = inner_join(inspect_data, google_ratings, by = c("Trade.Name"))
 
-
+rm(google_ratings)
 #########################################################################################
 
 # Add Airbnb Data
@@ -196,9 +198,9 @@ data_bnb <- read.csv("data/ab_nyc_19.csv") #reading data
 
 longitude = as.numeric(data_bnb$longitude)
 latitude = as.numeric(data_bnb$latitude)
-
+Coordinates  = tibble(longitude, latitude)
 s = shapefile("data/geolocation/ZIP_CODE_040114.shp")
-pts <- tibble(longitude, latitude)
+pts <- Coordinates
 pts <- pts[complete.cases(pts),]
 coordinates(pts) <- ~longitude+latitude
 proj4string(pts) <- CRS("+proj=longlat +datum=WGS84")
@@ -206,12 +208,25 @@ pts <- spTransform(pts, proj4string(s))
 
 # this does the lon/lat to zip mapping
 zip_where <- pts %over% s
-data_bnb = mutate(Coordinates, ZIP = zip_where$ZIPCODE)
-data_bnb = inner_join(Coordinates, data_bnb, by = c("longitude", "latitude"))
+data_bnb = data_bnb %>% 
+  mutate(ZIP = zip_where$ZIPCODE) %>% 
+  inner_join(Coordinates, data_bnb, by = c("longitude", "latitude")) %>% 
+  dplyr::select(ZIP, price, neighbourhood_group)
 
-numbers = Coordinates %>% 
+summary = data_bnb %>% 
   group_by(ZIP) %>% 
-  summarise(count = n())
+  summarise(count = n(), mean = mean(price))
+
+data_bnb = inner_join(data_bnb, summary, by = "ZIP")
+data_bnb$ZIP = as.numeric(data_bnb$ZIP)
+
+data_bnb = data_bnb %>% 
+  distinct(ZIP, .keep_all = TRUE) %>% 
+  dplyr::select(-price) %>% 
+  rename(Zip.Code = ZIP)
+
+inspect_data = inner_join(inspect_data, data_bnb, by = "Zip.Code")
+rm(Coordinates, data_bnb, pts, s, summary, zip_where, latitude, longitude)
 #########################################################################################
 
 # Filter for New York City
