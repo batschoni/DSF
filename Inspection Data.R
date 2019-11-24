@@ -6,6 +6,7 @@ register_google(key = "AIzaSyB5prnz72uLxw3jlR7yUYr0qLDw62ZCot4") # the service i
 # Library for spatial data
 library("sp")
 library("raster")
+library(rgdal)
 
 
 # downlaod and first cleaning of inspection data
@@ -184,16 +185,33 @@ test <- merge(ny_inspect_data, demographic_data, by = "Street")
 
 # Add Google Ratings
 #########################################################################################
-
+google_ratings <-  read.csv("data/results_scraping.csv")
 
 
 #########################################################################################
 
 # Add Airbnb Data
 #########################################################################################
+data_bnb <- read.csv("data/ab_nyc_19.csv") #reading data
 
+longitude = as.numeric(data_bnb$longitude)
+latitude = as.numeric(data_bnb$latitude)
 
+s = shapefile("data/geolocation/ZIP_CODE_040114.shp")
+pts <- tibble(longitude, latitude)
+pts <- pts[complete.cases(pts),]
+coordinates(pts) <- ~longitude+latitude
+proj4string(pts) <- CRS("+proj=longlat +datum=WGS84")
+pts <- spTransform(pts, proj4string(s))
 
+# this does the lon/lat to zip mapping
+zip_where <- pts %over% s
+data_bnb = mutate(Coordinates, ZIP = zip_where$ZIPCODE)
+data_bnb = inner_join(Coordinates, data_bnb, by = c("longitude", "latitude"))
+
+numbers = Coordinates %>% 
+  group_by(ZIP) %>% 
+  summarise(count = n())
 #########################################################################################
 
 # Filter for New York City
