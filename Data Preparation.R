@@ -6,16 +6,15 @@
 library(tidyverse)
 library("ggmap") # to get coordinates from a address
 register_google(key = "") # the service is free but requires email registration
-# Library for spatial data
-library("sp")
-library("raster")
+library("sp") # Library for spatial data
+library("raster") # Library for spatial data
 library(rgdal)
 
 
 # downlaod and first cleaning of inspection data
 #########################################################################################
 
-# Download the file
+# Initially Download the file
 #inspect_data <- read.csv("https://data.ny.gov/api/views/d6dy-3h7r/rows.csv?accessType=DOWNLOAD", stringsAsFactors = FALSE)
 #save(inspect_data, file = "./data/inspect_data_original.RData")
 
@@ -195,9 +194,14 @@ google_ratings <-  read.csv("data/results_scraping.csv")
 google_ratings <- dplyr::select(google_ratings, -X)
 #google_ratings = google_ratings[complete.cases(google_ratings[,]),]
 #google_ratings$Reviews[which(google_ratings$Reviews!=0)] = 1
-inspect_data = inner_join(inspect_data, google_ratings, by = c("Trade.Name"))
+inspect_data = inner_join(inspect_data, google_ratings, by = "Trade.Name")
+
+inspect_data <- inspect_data %>%
+  dplyr::select(-City.y) %>%
+  rename(City = City.x) 
 
 rm(google_ratings)
+
 #########################################################################################
 
 # Add Airbnb Data
