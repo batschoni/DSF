@@ -189,6 +189,8 @@ ny_inspect_dem <- merge(ny_inspect_data, demographic_data, by = "Street")
 #########################################################################################
 google_ratings <-  read.csv("data/results_scraping.csv")
 google_ratings <- dplyr::select(google_ratings, -X)
+#google_ratings = google_ratings[complete.cases(google_ratings[,]),]
+#google_ratings$Reviews[which(google_ratings$Reviews!=0)] = 1
 inspect_data = inner_join(inspect_data, google_ratings, by = c("Trade.Name"))
 
 rm(google_ratings)
@@ -225,7 +227,7 @@ data_bnb$ZIP = as.numeric(data_bnb$ZIP)
 data_bnb = data_bnb %>% 
   distinct(ZIP, .keep_all = TRUE) %>% 
   dplyr::select(-price) %>% 
-  rename(Zip.Code = ZIP)
+  rename(Zip.Code = ZIP, Numb_Rooms = count, Avr_Price = mean)
 
 inspect_data = inner_join(inspect_data, data_bnb, by = "Zip.Code")
 rm(Coordinates, data_bnb, pts, s, summary, zip_where, latitude, longitude)
@@ -237,7 +239,6 @@ rm(Coordinates, data_bnb, pts, s, summary, zip_where, latitude, longitude)
 # only NY City
 ny_counties <-  c("New York", "Kings", "Bronx", "Richmond", "Queens")
 ny_inspect_data <- inspect_data[which(inspect_data$County %in% ny_counties),]
-
 rm(ny_counties)
 
 table(ny_inspect_data$Inspection.Grade)
