@@ -4,11 +4,11 @@
 # install.packages("rgdal")
 
 library(tidyverse)
-library("ggmap") # to get coordinates from a address
+library(ggmap) # to get coordinates from a address
 register_google(key = "") # the service is free but requires email registration
 # Library for spatial data
-library("sp")
-library("raster")
+library(sp)
+library(raster)
 library(rgdal)
 
 
