@@ -185,74 +185,34 @@ over_under_bagging <- function(df, Y, B, sample_size){
   return(cbind(model_pred$class, testing_data$Inspection.Grade))
 }
 
+lda_fit <- lda(Inspection.Grade ~ shop_density + Number_of_Reviews, data = data)
 
-decisionplot <- function(model, data, class = NULL, predict_type = "class",
-                         resolution = 100, showgrid = TRUE, ...) {
-  browser()
-  if(!is.null(class)) cl <- data[,class] else cl <- 1
-    
-  k <- nrow(unique(cl))
-  
-  #plot(data, col = (cl+1L), pch = (cl+1L), ...)
-  plot(data[, 2], data[, 3], col = data[, 1], ...)
-  
-  # make grid
-  r <- sapply(data, range, na.rm = TRUE)
-  xs <- seq(r[1,1], r[2,1], length.out = resolution)
-  ys <- seq(r[1,2], r[2,2], length.out = resolution)
-  g <- cbind(rep(xs, each=resolution), rep(ys, time = resolution))
-  colnames(g) <- colnames(r)
-  g <- as.data.frame(g)
-  
-  ### guess how to get class labels from predict
-  ### (unfortunately not very consistent between models)
-  p <- predict(model, g, type = predict_type)
-  if(is.list(p)) p <- p$class
-  p <- as.factor(p)
-  
-  if(showgrid) points(g, col = as.integer(p)+1L, pch = ".")
-  
-  z <- matrix(as.integer(p), nrow = resolution, byrow = TRUE)
-  contour(xs, ys, z, add = TRUE, drawlabels = FALSE,
-          lwd = 2, levels = (1:(k-1))+.5)
-  
-  invisible(z)
-}
-
-decisionplot(test, data[,c(1,2,6)], class = "Inspection.Grade", main = "LDA")
-test <- lda(Inspection.Grade ~ shop_density + Number_of_Reviews, data = data)
-plot(data[, 2:3], col = data[, 1])
-
-ggplot(data = data[,c(1,2,6)], aes(y = shop_density, x = Number_of_Reviews)) +
-  geom_point(aes(color=Inspection.Grade), alpha=1) +
-  theme_gray()
-
-data2 <- data %>%
-  dplyr::select(count, rating_closest_neighb, Inspection.Grade)
-
-
-
-as.integer(nrow(unique(data[, "Inspection.Grade"]))+1L)
-
-
+# Grid values
+resolution = 200
+r <- sapply(data[c("shop_density", "Number_of_Reviews")], range, na.rm = TRUE)
+xs <- seq(r[1,1], r[2,1], length.out = resolution)
+ys <- seq(r[1,2], r[2,2], length.out = resolution)
+g <- cbind(rep(xs, each=resolution), rep(ys, time = resolution))
+colnames(g) <- colnames(r)
+g <- as.data.frame(g)
+# Lda prediction
+lda_pred <- predict(lda_fit, g)
+lda_pred <- as.factor(lda_pred$class)
+# Grid data
+grid_data <- cbind(lda_pred, g)
+grid_data <- as.data.frame(grid_data)
 
 test <- over_under_bagging(data,
                            Y = "Inspection.Grade",
                            B = 1,
                            sample_size = c(1500, 500, 1000))
 
+ggplot(data = data, aes(y = shop_density, x = Number_of_Reviews)) +
+  geom_point(data = grid_data, aes(color=lda_pred), alpha=0.5, size = 0.5) +
+  geom_point(aes(color=Inspection.Grade), alpha=1)+
+  theme_gray()
 
-
-test$scaling
-
-
-
-plot(test, col = as.integer(data2$Inspection.Grade))
-
-test$scaling
-
-
-
+rm(g, grid_data, r, lda_pred, resolution, xs, ys)
 
 
 ggplot(data = data, aes(y = shop_density, x = count)) +
