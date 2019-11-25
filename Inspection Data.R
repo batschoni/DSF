@@ -1,8 +1,11 @@
+# Install required packages
 # install.packages("ggmap")
 # install.packages("raster")
+# install.packages("rgdal")
+
 library(tidyverse)
 library("ggmap") # to get coordinates from a address
-register_google(key = "AIzaSyB5prnz72uLxw3jlR7yUYr0qLDw62ZCot4") # the service is free but requires email registration
+register_google(key = "") # the service is free but requires email registration
 # Library for spatial data
 library("sp")
 library("raster")
