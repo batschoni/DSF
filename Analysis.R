@@ -6,7 +6,12 @@ set.seed(123)
 
 data <- inspect_data %>%
   mutate(Inspection.Grade = factor(Inspection.Grade, levels = c(3, 2, 1), labels = c("A", "B", "C"))) %>%
-  dplyr::select(c(Inspection.Grade, shop_density, rating_closest_neighb, chain, count))
+  dplyr::select(c(Inspection.Grade, 
+                  shop_density,
+                  rating_closest_neighb,
+                  chain,
+                  count,
+                  Number_of_Reviews))
 
 # Resammple to address imbalances in the data
 paste("sub_insect_data","A", sep = "") <- data[which(data$Inspection.Grade=="A"), ]
@@ -155,7 +160,7 @@ ggplot(data = lda_error, aes(x = Covariates, group=1)) +
 
 #########################################################################################
 
-# LDA Model Selection
+# LDA Estimation
 #########################################################################################
 
 # Implement over- and under-bagging
@@ -185,11 +190,11 @@ decisionplot <- function(model, data, class = NULL, predict_type = "class",
                          resolution = 100, showgrid = TRUE, ...) {
   browser()
   if(!is.null(class)) cl <- data[,class] else cl <- 1
-  data <- data[,1:2]
+    
   k <- nrow(unique(cl))
   
   #plot(data, col = (cl+1L), pch = (cl+1L), ...)
-  plot(data, col = 4, pch = 4, ...)
+  plot(data[, 2], data[, 3], col = data[, 1], ...)
   
   # make grid
   r <- sapply(data, range, na.rm = TRUE)
@@ -214,7 +219,13 @@ decisionplot <- function(model, data, class = NULL, predict_type = "class",
   invisible(z)
 }
 
+decisionplot(test, data[,c(1,2,6)], class = "Inspection.Grade", main = "LDA")
+test <- lda(Inspection.Grade ~ shop_density + Number_of_Reviews, data = data)
+plot(data[, 2:3], col = data[, 1])
 
+ggplot(data = data[,c(1,2,6)], aes(y = shop_density, x = Number_of_Reviews)) +
+  geom_point(aes(color=Inspection.Grade), alpha=1) +
+  theme_gray()
 
 data2 <- data %>%
   dplyr::select(count, rating_closest_neighb, Inspection.Grade)
@@ -230,13 +241,17 @@ test <- over_under_bagging(data,
                            B = 1,
                            sample_size = c(1500, 500, 1000))
 
-test <- lda(Inspection.Grade ~ count + rating_closest_neighb, data = data2)
+
+
+test$scaling
+
+
 
 plot(test, col = as.integer(data2$Inspection.Grade))
 
 test$scaling
 
-decisionplot(test, data2, class = "Inspection.Grade", main = "LDA")
+
 
 
 
