@@ -20,7 +20,7 @@ library(rgdal)
 # downlaod and first cleaning of inspection data
 #########################################################################################
 
-# Initially Download the file
+# Initially download and save the file
 #inspect_data <- read.csv("https://data.ny.gov/api/views/d6dy-3h7r/rows.csv?accessType=DOWNLOAD", stringsAsFactors = FALSE)
 #save(inspect_data, file = "./data/inspect_data_original.RData")
 
@@ -177,7 +177,7 @@ inspect_data <- inspect_data %>%
   mutate(shop_density = shop_density,
          rating_closest_neighb = rating_closest_neighb)
 
-rm(distances, i, inspect_grade, lat, lon, rating_closest_neighb, shop_density, haversine, n_closest, inspect_data_sub)
+rm(distances, i, inspect_grade, lat, lon, rating_closest_neighb, shop_density, n_closest, inspect_data_sub)
 
 save(inspect_data, file = "./data/inspect_data.RData")
 #########################################################################################
@@ -208,6 +208,18 @@ inspect_data <- inspect_data %>%
 
 rm(google_ratings)
 
+save(inspect_data, file = "./data/inspect_data.RData")
+#########################################################################################
+
+# Filter for New York City
+#########################################################################################
+
+# only NY City
+ny_counties <-  c("New York", "Kings", "Bronx", "Richmond", "Queens")
+ny_inspect_data <- inspect_data[which(inspect_data$County %in% ny_counties),]
+rm(ny_counties)
+
+save(inspect_data, file = "./data/ny_inspect_data.RData")
 #########################################################################################
 
 # Add Airbnb Data
@@ -243,30 +255,21 @@ data_bnb = data_bnb %>%
   dplyr::select(-price) %>% 
   rename(Zip.Code = ZIP, Numb_Rooms = count, Avr_Price = mean)
 
-inspect_data = inner_join(inspect_data, data_bnb, by = "Zip.Code")
+ny_inspect_data = inner_join(ny_inspect_data, data_bnb, by = "Zip.Code")
+
 rm(Coordinates, data_bnb, pts, s, summary, zip_where, latitude, longitude)
-#########################################################################################
-
-# Filter for New York City
-#########################################################################################
-
-# only NY City
-ny_counties <-  c("New York", "Kings", "Bronx", "Richmond", "Queens")
-ny_inspect_data <- inspect_data[which(inspect_data$County %in% ny_counties),]
-rm(ny_counties)
-
-table(ny_inspect_data$Inspection.Grade)
 
 #########################################################################################
 
 # NYC Subway locations
 #########################################################################################
 
-# Download the file
-subway_data <- read.csv("https://data.ny.gov/api/views/i9wp-a4ja/rows.csv?accessType=DOWNLOAD&sorting=true", stringsAsFactors = FALSE)
+# Initially download and save the file
+#subway_data <- read.csv("https://data.ny.gov/api/views/i9wp-a4ja/rows.csv?accessType=DOWNLOAD&sorting=true", stringsAsFactors = FALSE)
+#save(subway_data, file = "./data/subway_data.RData")
 
-# Save it in the data folder
-#save(subway_data, file = "./data/inspect_data.RData")
+# Load the saved data
+load("./data/subway_data.RData")
 
 subway_data <- as_tibble(subway_data)
 
@@ -279,8 +282,8 @@ subway_data <- subway_data %>%
 # Distances in meter to next subway station (ONLY NYC)
 subway_distance <- c()
 for (i in 1:nrow(ny_inspect_data)){
-  lat <-  as.numeric(ny_inspect_data$Latitude[1])
-  lon <-  as.numeric(ny_inspect_data$Longitude[1])
+  lat <-  as.numeric(ny_inspect_data$Latitude[i])
+  lon <-  as.numeric(ny_inspect_data$Longitude[i])
   distances <- haversine(lat, lon, subway_data$Latitude, subway_data$Longitude)
   distances <- min(distances)
   subway_distance <-  c(subway_distance, distances)
@@ -288,6 +291,8 @@ for (i in 1:nrow(ny_inspect_data)){
 
 ny_inspect_data <- ny_inspect_data %>%
   mutate(subway_distance = subway_distance)
+
+rm(i, lat, lon, subway_data, haversine, subway_distance, distances)
 
 #########################################################################################
 
