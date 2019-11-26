@@ -13,6 +13,15 @@ data <- inspect_data %>%
                   count,
                   Number_of_Reviews))
 
+ny_data <- ny_inspect_data %>%
+  mutate(Inspection.Grade = factor(Inspection.Grade, levels = c(3, 2, 1), labels = c("A", "B", "C"))) %>%
+  dplyr::select(c(Inspection.Grade, 
+                  shop_density,
+                  rating_closest_neighb,
+                  chain,
+                  count,
+                  Number_of_Reviews))
+
 # Resammple to address imbalances in the data
 paste("sub_insect_data","A", sep = "") <- data[which(data$Inspection.Grade=="A"), ]
 sub_insect_dataB <- data[which(data$Inspection.Grade=="B"), ]
@@ -186,6 +195,13 @@ over_under_bagging <- function(df, Y, B, sample_size){
 }
 
 lda_fit <- lda(Inspection.Grade ~ shop_density + Number_of_Reviews, data = data)
+lda_pred <- predict(lda_fit, data = data)
+
+lda_pred$post[, c("A","B")] %*% c(1,1)
+matrix((lda_pred$post[, c("A","B")] %*% c(1,1)), length(xs), length(ys))
+       
+lda_fit$scaling
+table(data$Inspection.Grade, lda_pred$class)
 
 # Grid values
 resolution = 200
@@ -201,20 +217,20 @@ lda_pred <- as.factor(lda_pred$class)
 # Grid data
 grid_data <- cbind(lda_pred, g)
 grid_data <- as.data.frame(grid_data)
-
-test <- over_under_bagging(data,
-                           Y = "Inspection.Grade",
-                           B = 1,
-                           sample_size = c(1500, 500, 1000))
+# Decision border
+dec_border <- matrix(as.integer(lda_pred), nrow = resolution, byrow = TRUE)
+zs <- lda_pred$post[, c("A","B")] %*% c(1,1)
 
 ggplot(data = data, aes(y = shop_density, x = Number_of_Reviews)) +
-  geom_point(data = grid_data, aes(color=lda_pred), alpha=0.5, size = 0.5) +
+  #geom_point(data = grid_data, aes(color=lda_pred), alpha=0.1, size = 0.5) +
   geom_point(aes(color=Inspection.Grade), alpha=1)+
+  geom_contour(aes(y = ys, x = xs, z=zs), 
+               breaks=c(0,.5))
   theme_gray()
 
-rm(g, grid_data, r, lda_pred, resolution, xs, ys)
+rm(g, grid_data, r, lda_pred, resolution, xs, ys, dec_border)
 
-
+length(lda_pred)
 ggplot(data = data, aes(y = shop_density, x = count)) +
   geom_point(aes(color=Inspection.Grade), alpha=1) +
   theme_gray()

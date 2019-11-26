@@ -184,7 +184,6 @@ save(inspect_data, file = "./data/inspect_data.RData")
 
 # Add Demographic Information
 #########################################################################################
-
 demographic_data <- read.csv("./data/inspectionsDem.cvs.gz")
 #abc <- demographic_data[!duplicated(demographic_data$Street), ]
 #same adress but different inspection
