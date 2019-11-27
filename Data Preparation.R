@@ -6,11 +6,14 @@
 library(tidyverse)
 library(ggmap) # to get coordinates from a address
 register_google(key = "") # the service is free but requires email registration
+<<<<<<< HEAD
 library("sp") # Library for spatial data
 library("raster") # Library for spatial data
-# Library for spatial data
-library(sp)
+=======
+  # Library for spatial data
+  library(sp)
 library(raster)
+>>>>>>> 27bd7cd1fbaba01949d12d54ea3938ae86dc3d86
 library(rgdal)
 
 
@@ -130,6 +133,7 @@ save(inspect_data, file = "./data/inspect_data.RData")
 # Haversine Formula
 haversine <- function(lat1, lon1, lat2, lon2){
   # to radians
+  browser()
   φ1 <- (lat1 * pi) / (180)
   φ2 <- (lat2 * pi) / (180)
   Δφ <- ((lat2 - lat1) * pi) / (180)
@@ -192,7 +196,8 @@ ny_inspect_data <- ny_inspect_dem
 
 # Add Google Ratings
 #########################################################################################
-google_ratings <-  read.csv("data/results_scraping.csv")
+load("data/results_scraping_final")
+google_ratings <-  data
 google_ratings <- dplyr::select(google_ratings, -X)
 #google_ratings = google_ratings[complete.cases(google_ratings[,]),]
 #google_ratings$Reviews[which(google_ratings$Reviews!=0)] = 1
@@ -202,7 +207,7 @@ inspect_data <- inspect_data %>%
   dplyr::select(-City.y) %>%
   rename(City = City.x) 
 
-rm(google_ratings)
+rm(google_ratings, data)
 
 save(inspect_data, file = "./data/inspect_data.RData")
 #########################################################################################
@@ -215,7 +220,7 @@ ny_counties <-  c("New York", "Kings", "Bronx", "Richmond", "Queens")
 ny_inspect_data <- inspect_data[which(inspect_data$County %in% ny_counties),]
 rm(ny_counties)
 
-save(ny_inspect_data, file = "./data/ny_inspect_data.RData")
+save(inspect_data, file = "./data/ny_inspect_data.RData")
 #########################################################################################
 
 # Add Airbnb Data
@@ -255,8 +260,6 @@ ny_inspect_data = inner_join(ny_inspect_data, data_bnb, by = "Zip.Code")
 
 rm(Coordinates, data_bnb, pts, s, summary, zip_where, latitude, longitude)
 
-save(ny_inspect_data, file = "./data/ny_inspect_data.RData")
-
 #########################################################################################
 
 # NYC Subway locations
@@ -291,8 +294,5 @@ ny_inspect_data <- ny_inspect_data %>%
   mutate(subway_distance = subway_distance)
 
 rm(i, lat, lon, subway_data, haversine, subway_distance, distances)
-
 save(ny_inspect_data, file = "./data/ny_inspect_data.RData")
-
 #########################################################################################
-
