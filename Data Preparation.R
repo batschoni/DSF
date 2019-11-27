@@ -133,6 +133,7 @@ save(inspect_data, file = "./data/inspect_data.RData")
 # Haversine Formula
 haversine <- function(lat1, lon1, lat2, lon2){
   # to radians
+  browser()
   φ1 <- (lat1 * pi) / (180)
   φ2 <- (lat2 * pi) / (180)
   Δφ <- ((lat2 - lat1) * pi) / (180)
@@ -281,8 +282,8 @@ subway_data <- subway_data %>%
 # Distances in meter to next subway station (ONLY NYC)
 subway_distance <- c()
 for (i in 1:nrow(ny_inspect_data)){
-  lat <-  as.numeric(ny_inspect_data$Latitude[i])
-  lon <-  as.numeric(ny_inspect_data$Longitude[i])
+  lat <-  as.numeric(ny_inspect_data$Latitude[125])
+  lon <-  as.numeric(ny_inspect_data$Longitude[125])
   distances <- haversine(lat, lon, subway_data$Latitude, subway_data$Longitude)
   distances <- min(distances)
   subway_distance <-  c(subway_distance, distances)
