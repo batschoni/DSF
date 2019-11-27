@@ -20,28 +20,14 @@ ny_data <- ny_inspect_data %>%
                   rating_closest_neighb,
                   chain,
                   count,
-                  Number_of_Reviews))
+                  Number_of_Reviews,
+                  neighbourhood_group,
+                  Numb_Rooms,
+                  Avr_Price,
+                  subway_distance))
 
-# Resammple to address imbalances in the data
-paste("sub_insect_data","A", sep = "") <- data[which(data$Inspection.Grade=="A"), ]
-sub_insect_dataB <- data[which(data$Inspection.Grade=="B"), ]
-sub_insect_dataC <- data[which(data$Inspection.Grade=="C"), ]
+table(ny_data$Inspection.Grade)
 
-length(as.matrix(unique(data["Inspection.Grade"])))
-sort(as.matrix(unique(data["Inspection.Grade"])))
-sample(1:nrow(sub_insect_dataA), 1500, replace=T)
-sample(1:nrow(sub_insect_dataB), 500, replace=T)
-sample(1:nrow(sub_insect_dataC), 1000, replace=T)
-
-sub_insect_dataA$Inspection.Grade[1] %in% data$Inspection.Grade
-nrow(merge(sub_insect_dataA$Inspection.Grade,data))
-
-# under-sample A Grades
-data2 <- sample(sub_insect_dataA, size = 2000, replace = FALSE)
-data2 <- data2 %>%
-  bind_rows(sub_insect_dataB) %>%
-  bind_rows(sub_insect_dataC)
-library(plyr)
 #########################################################################################
 
 # First descriptive plots
@@ -49,7 +35,7 @@ library(plyr)
 #install.packages("ggthemes")
 library(ggthemes)
 
-ggplot(data = data, aes(x=Inspection.Grade)) +
+ggplot(data = ny_data, aes(x=Inspection.Grade)) +
   geom_histogram(stat = "count", fill = "lightgrey") +
   theme(legend.position="top") +
   labs(title="Histogram of Inspection Grades",
@@ -85,6 +71,8 @@ model_selection_lda <- function(df_train, df_test, Y){
     var_comb[row_nr:comb_size, 1] <- combn(col_names, i, function(x) paste(x, collapse=' + '))
     row_nr <- row_nr + ncol(combn(col_names, i))
   }
+  # add numbers to row labels
+  row_names <- paste(1:length(row_names), sep = " ", row_names)
   error_rate <- matrix(data = NA, ncol = 1, nrow = comb_nrs)
   rownames(error_rate) <- row_names
   for(i in 1:comb_nrs){
@@ -102,25 +90,51 @@ model_selection_lda <- function(df_train, df_test, Y){
 # Implements K-Fold Cross Validation
 k_fold_CV <- function(df, Y, K){
   fold <- round(nrow(df) / K)
-  cross_val_err = matrix(data = NA, nrow = ncol(df) - 1, ncol = K+1)
+  cross_val_err = matrix(data = NA, nrow = 2^(ncol(df)-1) - 1, ncol = K)
   for(i in 1:K){
     train_data <- df[-c((1+(i-1)*fold):(i*fold)),]
     testing_data <- df[(1+(i-1)*fold):(i*fold),]
     err <- model_selection_lda(train_data, testing_data, Y)
-    cross_val_err[,i] <- err[, 2]
+    cross_val_err[,i] <- err[, 1]
   }
-  cross_val_err[,K+1] <- apply(cross_val_err, 1, mean)
+  cross_val_err <- as.tibble(apply(cross_val_err, 1, mean, na.rm=TRUE))
+  rownames(cross_val_err) = rownames(err)
   return(cross_val_err)
 }
 
-# Implement over- and under-bagging
+# Implement over- and underbagging with CV Errors
 over_under_bagging <- function(df, Y, B, sample_size){
   set.seed(123)
   classes <- as.matrix(unique(df[Y]))
   classes <- sort(classes)
   for(i in 1:length(classes)){
     nam <- paste("subset", classes[i], sep = "")
-    assign(nam, df[which(as.matrix(data[Y])== classes[i]), ])
+    assign(nam, df[which(as.matrix(df[Y])== classes[i]), ])
+  }
+  CV_err = matrix(data = NA, nrow = 2^(ncol(df) - 1) - 1, ncol = B)
+  for(i in 1:B){
+    sampleA <- sample(1:nrow(subsetA), sample_size[1], replace = T)
+    sampleB <- sample(1:nrow(subsetB), sample_size[2], replace = T)
+    sampleC <- sample(1:nrow(subsetC), sample_size[3], replace = T)
+    bagging_data <- rbind(subsetA[sampleA, ], subsetB[sampleB, ], subsetC[sampleC, ])
+    err <- k_fold_CV(bagging_data, Y, 10)
+    CV_err[,i] <- as.matrix(err[, 1])
+  }
+  CV_err_final <- as.tibble(apply(CV_err, 1, mean, na.rm=TRUE))
+  CV_err_final <- cbind(rownames(err), CV_err_final)
+  #oob_err_final <- as.matrix(apply(oob_err, 1, mean, na.rm=TRUE))
+  #rownames(oob_err_final) <-  rownames(err)
+  return(CV_err_final)
+}
+
+# Implement over- and under-bagging with OOB Errors
+over_under_bagging <- function(df, Y, B, sample_size){
+  set.seed(123)
+  classes <- as.matrix(unique(df[Y]))
+  classes <- sort(classes)
+  for(i in 1:length(classes)){
+    nam <- paste("subset", classes[i], sep = "")
+    assign(nam, df[which(as.matrix(df[Y])== classes[i]), ])
   }
   oob_err = matrix(data = NA, nrow = 2^(ncol(df) - 1) - 1, ncol = B)
   for(i in 1:B){
@@ -145,15 +159,15 @@ over_under_bagging <- function(df, Y, B, sample_size){
 
 
 # implement LDA with under-bagging
-lda_under_bagging_error <- over_under_bagging(data,
+lda_under_bagging_error <- over_under_bagging(ny_data,
                                               Y = "Inspection.Grade",
                                               B = 100,
-                                              sample_size = c(1500, 500, 1000))
+                                              sample_size = c(700, 700, 700))
 # implement LDA with over-bagging
-lda_over_bagging_error <- over_under_bagging(data,
+lda_over_bagging_error <- over_under_bagging(ny_data,
                                              Y = "Inspection.Grade",
                                              B = 100,
-                                             sample_size = c(15000, 5000, 10000))
+                                             sample_size = c(5000, 5000, 5000))
 
 lda_error <- full_join(lda_under_bagging_error, lda_over_bagging_error, by = "rownames(err)")
 
@@ -164,38 +178,54 @@ ggplot(data = lda_error, aes(x = Covariates, group=1)) +
   geom_line(aes(y = Over_bagging_error), color = "Red") +
   labs(title="Prediction Rate LDA",
        x="Covariate Combination",
-       y = "OOB Error Rate") +
+       y = "Error Rate") +
   theme_gray()
+
+# Lowest OOB Error is achievd wih under-bagging and the variables count + number_of_reviews
+
+rm(model_selection_lda, over_under_bagging, lda_over_bagging_error, lda_under_bagging_error)
 
 #########################################################################################
 
 # LDA Estimation
 #########################################################################################
+set.seed(1234)
 
-# Implement over- and under-bagging
-over_under_bagging <- function(df, Y, B, sample_size){
-  set.seed(123)
+# Returns a bagging sample
+bagging_sample <- function(df, Y, sample_size){
   classes <- as.matrix(unique(df[Y]))
   classes <- sort(classes)
   for(i in 1:length(classes)){
     nam <- paste("subset", classes[i], sep = "")
-    assign(nam, df[which(as.matrix(data[Y])== classes[i]), ])
+    assign(nam, df[which(as.matrix(df[Y])== classes[i]), ])
   }
-  oob_err = matrix(data = NA, nrow = 2^(ncol(df) - 1) - 1, ncol = B)
-  for(i in 1:B){
-    sampleA <- sample(1:nrow(subsetA), sample_size[1], replace = T)
-    sampleB <- sample(1:nrow(subsetB), sample_size[2], replace = T)
-    sampleC <- sample(1:nrow(subsetC), sample_size[3], replace = T)
-    train_data <- rbind(subsetA[sampleA, ], subsetB[sampleB, ], subsetC[sampleC, ])
-    testing_data <- rbind(subsetA[-(sampleA), ], subsetB[-(sampleB), ], subsetC[-(sampleC), ])
-    model_fit <- lda(Inspection.Grade ~ chain, data = train_data)
-    model_pred <- predict(model_fit, testing_data)
-  }
-  return(cbind(model_pred$class, testing_data$Inspection.Grade))
+  sampleA <- sample(1:nrow(subsetA), sample_size[1], replace = T)
+  sampleB <- sample(1:nrow(subsetB), sample_size[2], replace = T)
+  sampleC <- sample(1:nrow(subsetC), sample_size[3], replace = T)
+  bagging_data <- rbind(subsetA[sampleA, ], subsetB[sampleB, ], subsetC[sampleC, ])
+  return(bagging_data)
 }
 
+B = 100
+bagged_models=list()
+bagged_predictions=matrix(data = NA, nrow = B, ncol = 2100)
+for (i in 1:B){
+  sample <- bagging_sample(ny_data,
+                 Y = "Inspection.Grade",
+                 sample_size = c(700, 700, 700))
+  model_fit <- lda(Inspection.Grade~count + Number_of_Reviews, data = sample)
+  mode_pred <- predict(model_fit, data = sample)
+  bagged_models <- c(bagged_models, list(model_fit))
+  bagged_predictions[, i] <- mode_pred$class
+  table(sample$Inspection.Grade)
+}
+
+
 lda_fit <- lda(Inspection.Grade ~ shop_density + Number_of_Reviews, data = data)
-lda_pred <- predict(lda_fit, data = data)
+
+
+
+lda_pred <- predict(test[2], data = data)
 
 lda_pred$post[, c("A","B")] %*% c(1,1)
 matrix((lda_pred$post[, c("A","B")] %*% c(1,1)), length(xs), length(ys))
@@ -228,7 +258,7 @@ ggplot(data = data, aes(y = shop_density, x = Number_of_Reviews)) +
                breaks=c(0,.5))
   theme_gray()
 
-rm(g, grid_data, r, lda_pred, resolution, xs, ys, dec_border)
+rm(g, grid_data, r, lda_pred, resolution, xs, ys, dec_border, zs)
 
 length(lda_pred)
 ggplot(data = data, aes(y = shop_density, x = count)) +
