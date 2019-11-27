@@ -220,7 +220,7 @@ ny_counties <-  c("New York", "Kings", "Bronx", "Richmond", "Queens")
 ny_inspect_data <- inspect_data[which(inspect_data$County %in% ny_counties),]
 rm(ny_counties)
 
-save(inspect_data, file = "./data/ny_inspect_data.RData")
+save(ny_inspect_data, file = "./data/ny_inspect_data.RData")
 #########################################################################################
 
 # Add Airbnb Data
@@ -260,6 +260,7 @@ ny_inspect_data = inner_join(ny_inspect_data, data_bnb, by = "Zip.Code")
 
 rm(Coordinates, data_bnb, pts, s, summary, zip_where, latitude, longitude)
 
+save(ny_inspect_data, file = "./data/ny_inspect_data.RData")
 #########################################################################################
 
 # NYC Subway locations
@@ -294,5 +295,6 @@ ny_inspect_data <- ny_inspect_data %>%
   mutate(subway_distance = subway_distance)
 
 rm(i, lat, lon, subway_data, haversine, subway_distance, distances)
+
 save(ny_inspect_data, file = "./data/ny_inspect_data.RData")
 #########################################################################################
