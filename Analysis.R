@@ -2,6 +2,11 @@
 # Tranformation before analysis
 #########################################################################################
 
+# Load data for entire state
+load("./data/inspect_data.RData")
+# Load data for NYC
+load("./data/ny_inspect_data.RData")
+
 set.seed(123)
 
 data <- inspect_data %>%
@@ -27,6 +32,10 @@ ny_data <- ny_inspect_data %>%
                   subway_distance))
 
 table(ny_data$Inspection.Grade)
+
+rm(ny_inspect_data, inspect_data)
+
+# NA check
 
 #########################################################################################
 
@@ -55,6 +64,7 @@ library(ISLR)
 
 
 # Implements lda for increasing number of covariates
+# Takes train and test dataset and the Y variable as character
 model_selection_lda <- function(df_train, df_test, Y){
   # all covariates
   col_names <- colnames(df_train)
@@ -77,7 +87,7 @@ model_selection_lda <- function(df_train, df_test, Y){
   rownames(error_rate) <- row_names
   for(i in 1:comb_nrs){
     myformula <- paste( Y, '~', var_comb[i, 1] ) #<--------------------
-    myformula <- as.formula(myformula) #<--------------------
+    myformula <- as.formula(myformula)
     model_fit <- lda(myformula, data = df_train) #<--------------------
     model_pred <- predict(model_fit, df_test) #<--------------------
     correct_pred <- which(model_pred$class != as.matrix(df_test[Y])) #<--------------------
@@ -88,6 +98,7 @@ model_selection_lda <- function(df_train, df_test, Y){
 }
 
 # Implements K-Fold Cross Validation
+# Takes a dataframe, the Y variable as charakter and the number of fold K
 k_fold_CV <- function(df, Y, K){
   fold <- round(nrow(df) / K)
   cross_val_err = matrix(data = NA, nrow = 2^(ncol(df)-1) - 1, ncol = K)
@@ -103,6 +114,8 @@ k_fold_CV <- function(df, Y, K){
 }
 
 # Implement over- and underbagging with CV Errors
+# Takes a dataframe, the Y variable as charakter, the number of bagged models B as well as
+# as well as the number of each class from the original df
 over_under_bagging <- function(df, Y, B, sample_size){
   set.seed(123)
   classes <- as.matrix(unique(df[Y]))
@@ -217,9 +230,13 @@ for (i in 1:B){
   mode_pred <- predict(model_fit, data = sample)
   bagged_models <- c(bagged_models, list(model_fit))
   bagged_predictions[, i] <- mode_pred$class
-  table(sample$Inspection.Grade)
 }
 
+test <- cbind(test, mode_pred$class)
+
+apply(test, 1, which.max)
+
+which.max(c(1,1))
 
 lda_fit <- lda(Inspection.Grade ~ shop_density + Number_of_Reviews, data = data)
 
