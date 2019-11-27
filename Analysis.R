@@ -65,6 +65,7 @@ library(ISLR)
 
 # Implements lda for increasing number of covariates
 # Takes train and test dataset and the Y variable as character
+# As well as the applied model as FUN
 model_selection <- function(df_train, df_test, Y, FUN){
   # all covariates
   col_names <- colnames(df_train)
@@ -86,11 +87,15 @@ model_selection <- function(df_train, df_test, Y, FUN){
   error_rate <- matrix(data = NA, ncol = 1, nrow = comb_nrs)
   rownames(error_rate) <- row_names
   for(i in 1:comb_nrs){
-    myformula <- paste( Y, '~', var_comb[i, 1] ) #<--------------------
+    myformula <- paste( Y, '~', var_comb[i, 1] )
     myformula <- as.formula(myformula)
-    model_fit <- FUN(myformula, data = df_train) #<--------------------
-    model_pred <- predict(model_fit, df_test) #<--------------------
-    correct_pred <- which(model_pred$class != as.matrix(df_test[Y])) #<--------------------
+    model_fit <- FUN(myformula, data = df_train)
+    model_pred <- predict(model_fit, df_test)
+    # If model = discriminant analysis
+    if (length(model_pred) == 3){
+      model_pred <- model_pred$class 
+    }
+    correct_pred <- which(model_pred != as.matrix(df_test[Y]))
     error <- length(correct_pred) / nrow(df_test[Y])
     error_rate[i, 1] <- error
   }
@@ -141,6 +146,8 @@ over_under_bagging <- function(df, Y, B, sample_size, FUN){
 }
 
 # Implement over- and under-bagging with OOB Errors
+# Takes a dataframe, the Y variable as charakter, the number of bagged models B as well as
+# as well as the number of each class from the original df
 over_under_bagging <- function(df, Y, B, sample_size, FUN){
   set.seed(123)
   classes <- as.matrix(unique(df[Y]))
@@ -160,7 +167,7 @@ over_under_bagging <- function(df, Y, B, sample_size, FUN){
     testing_data <- rbind(testing_data,
                           subsetB[-(sampleB), ], 
                           subsetC[-(sampleC), ])
-    err <- model_selection_lda(train_data, testing_data, Y, FUN)
+    err <- model_selection(train_data, testing_data, Y, FUN)
     oob_err[,i] <- err
   }
   oob_err_final <- as.tibble(apply(oob_err, 1, mean, na.rm=TRUE))
@@ -170,24 +177,45 @@ over_under_bagging <- function(df, Y, B, sample_size, FUN){
   return(oob_err_final)
 }
 
+###
+library(randomForest)
+test <- randomForest(Inspection.Grade ~ count, data = ny_data)
+test <- glm(Inspection.Grade ~ count, data = ny_data, family = "binomial")
+test <- lda(Inspection.Grade ~ count, data = ny_data)
+pred <- predict(test, data = ny_data)
+length(pred)
+###
 
 # implement LDA with under-bagging
 lda_under_bagging_error <- over_under_bagging(ny_data,
                                               Y = "Inspection.Grade",
-                                              B = 10,
+                                              B = 2,
                                               sample_size = c(700, 700, 700),
                                               FUN = lda)
 # implement LDA with over-bagging
 lda_over_bagging_error <- over_under_bagging(ny_data,
                                              Y = "Inspection.Grade",
-                                             B = 100,
-                                             sample_size = c(5000, 5000, 5000))
+                                             B = 2,
+                                             sample_size = c(5000, 5000, 5000),
+                                             FUN = lda)
 
 lda_error <- full_join(lda_under_bagging_error, lda_over_bagging_error, by = "rownames(err)")
 
-colnames(lda_error) = c("Covariates", "Under_bagging_error", "Over_bagging_error")
+# we create X-lables for the plot of the Bagged-CV Error
+covariates <- ncol(ny_data) - 1
+covariates_comb <- c()
+for (i in 1:covariates){
+  for (j in 1:choose(covariates,i)){
+    covariates_comb <- c(covariates_comb, paste(i, j, sep = "."))
+  }
+}
+lda_error <- cbind(lda_error, covariates_comb)
 
-ggplot(data = lda_error, aes(x = Covariates, group=1)) +
+rm(i, j, covariates, covariates_comb)
+
+colnames(lda_error) <- c("Covariates", "Under_bagging_error", "Over_bagging_error", "Model")
+
+ggplot(data = lda_error, aes(x = Model, group=1)) +
   geom_line(aes(y = Under_bagging_error), color = "Blue" ) +
   geom_line(aes(y = Over_bagging_error), color = "Red") +
   labs(title="Prediction Rate LDA",
