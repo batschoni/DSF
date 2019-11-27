@@ -31,7 +31,7 @@ ny_data <- ny_inspect_data %>%
                   Avr_Price,
                   subway_distance))
 
-table(ny_data$Inspection.Grade)
+table(is.na(ny_data$Number_of_Reviews))
 
 rm(ny_inspect_data, inspect_data)
 
@@ -206,12 +206,15 @@ set.seed(1234)
 
 # Returns a bagging sample
 bagging_sample <- function(df, Y, sample_size){
+  # get all classes of the Y variable
   classes <- as.matrix(unique(df[Y]))
   classes <- sort(classes)
+  # create a subset of each class
   for(i in 1:length(classes)){
     nam <- paste("subset", classes[i], sep = "")
     assign(nam, df[which(as.matrix(df[Y])== classes[i]), ])
   }
+  # get samples of each class according to the sample size
   sampleA <- sample(1:nrow(subsetA), sample_size[1], replace = T)
   sampleB <- sample(1:nrow(subsetB), sample_size[2], replace = T)
   sampleC <- sample(1:nrow(subsetC), sample_size[3], replace = T)
@@ -219,27 +222,31 @@ bagging_sample <- function(df, Y, sample_size){
   return(bagging_data)
 }
 
-B = 100
+# number of bagging repetitions
+B = 10
 bagged_models=list()
-bagged_predictions=matrix(data = NA, nrow = B, ncol = 2100)
+# empty matrix for bagging predictions
+bagged_predictions=matrix(data = NA, nrow = 2100, ncol = B)
 for (i in 1:B){
+  # bagging sample
   sample <- bagging_sample(ny_data,
                  Y = "Inspection.Grade",
                  sample_size = c(700, 700, 700))
-  model_fit <- lda(Inspection.Grade~count + Number_of_Reviews, data = sample)
-  mode_pred <- predict(model_fit, data = sample)
+  # fits the model with the bagging sample
+  model_fit <- lda(Inspection.Grade~count + subway_distance, data = sample)
   bagged_models <- c(bagged_models, list(model_fit))
+  # predicts the values for the entire dataset
+  mode_pred <- predict(model_fit, data = ny_data)
   bagged_predictions[, i] <- mode_pred$class
 }
 
-test <- cbind(test, mode_pred$class)
+# Implements majority voting over the B bagging predictions
+maj_vote <- function(x) {
+  table = table(x)
+  majority = which.max(table)
+}
 
-apply(test, 1, which.max)
-
-which.max(c(1,1))
-
-lda_fit <- lda(Inspection.Grade ~ shop_density + Number_of_Reviews, data = data)
-
+pred_lda <- apply(bagged_predictions, 1, maj_vote)
 
 
 lda_pred <- predict(test[2], data = data)
@@ -252,7 +259,7 @@ table(data$Inspection.Grade, lda_pred$class)
 
 # Grid values
 resolution = 200
-r <- sapply(data[c("shop_density", "Number_of_Reviews")], range, na.rm = TRUE)
+r <- sapply(data[c("count", "subway_distance")], range, na.rm = TRUE)
 xs <- seq(r[1,1], r[2,1], length.out = resolution)
 ys <- seq(r[1,2], r[2,2], length.out = resolution)
 g <- cbind(rep(xs, each=resolution), rep(ys, time = resolution))
