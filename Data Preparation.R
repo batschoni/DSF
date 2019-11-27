@@ -133,7 +133,6 @@ save(inspect_data, file = "./data/inspect_data.RData")
 # Haversine Formula
 haversine <- function(lat1, lon1, lat2, lon2){
   # to radians
-  browser()
   φ1 <- (lat1 * pi) / (180)
   φ2 <- (lat2 * pi) / (180)
   Δφ <- ((lat2 - lat1) * pi) / (180)
