@@ -76,11 +76,11 @@ model_selection_lda <- function(df_train, df_test, Y){
   error_rate <- matrix(data = NA, ncol = 1, nrow = comb_nrs)
   rownames(error_rate) <- row_names
   for(i in 1:comb_nrs){
-    myformula <- paste( Y, '~', var_comb[i, 1] )
-    myformula <- as.formula(myformula)
-    model_fit <- lda(myformula, data = df_train)
-    model_pred <- predict(model_fit, df_test)
-    correct_pred <- which(model_pred$class != as.matrix(df_test[Y]))
+    myformula <- paste( Y, '~', var_comb[i, 1] ) #<--------------------
+    myformula <- as.formula(myformula) #<--------------------
+    model_fit <- lda(myformula, data = df_train) #<--------------------
+    model_pred <- predict(model_fit, df_test) #<--------------------
+    correct_pred <- which(model_pred$class != as.matrix(df_test[Y])) #<--------------------
     error <- length(correct_pred) / nrow(df_test[Y])
     error_rate[i, 1] <- error
   }
