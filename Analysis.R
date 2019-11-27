@@ -226,7 +226,7 @@ bagging_sample <- function(df, Y, sample_size){
 B = 10
 bagged_models=list()
 # empty matrix for bagging predictions
-bagged_predictions=matrix(data = NA, nrow = 2100, ncol = B)
+bagged_predictions=matrix(data = NA, nrow = nrow(ny_data), ncol = B)
 for (i in 1:B){
   # bagging sample
   sample <- bagging_sample(ny_data,
@@ -236,7 +236,7 @@ for (i in 1:B){
   model_fit <- lda(Inspection.Grade~count + subway_distance, data = sample)
   bagged_models <- c(bagged_models, list(model_fit))
   # predicts the values for the entire dataset
-  mode_pred <- predict(model_fit, data = ny_data)
+  mode_pred <- predict(model_fit, newdata = ny_data)
   bagged_predictions[, i] <- mode_pred$class
 }
 
