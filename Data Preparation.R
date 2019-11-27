@@ -195,7 +195,8 @@ ny_inspect_data <- ny_inspect_dem
 
 # Add Google Ratings
 #########################################################################################
-google_ratings <-  read.csv("data/results_scraping.csv")
+load("data/results_scraping_final")
+google_ratings <-  data
 google_ratings <- dplyr::select(google_ratings, -X)
 #google_ratings = google_ratings[complete.cases(google_ratings[,]),]
 #google_ratings$Reviews[which(google_ratings$Reviews!=0)] = 1
@@ -205,7 +206,7 @@ inspect_data <- inspect_data %>%
   dplyr::select(-City.y) %>%
   rename(City = City.x) 
 
-rm(google_ratings)
+rm(google_ratings, data)
 
 save(inspect_data, file = "./data/inspect_data.RData")
 #########################################################################################
@@ -292,6 +293,6 @@ ny_inspect_data <- ny_inspect_data %>%
   mutate(subway_distance = subway_distance)
 
 rm(i, lat, lon, subway_data, haversine, subway_distance, distances)
-
+save(ny_inspect_data, file = "./data/ny_inspect_data.RData")
 #########################################################################################
 
