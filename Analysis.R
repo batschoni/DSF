@@ -65,7 +65,7 @@ library(ISLR)
 
 # Implements lda for increasing number of covariates
 # Takes train and test dataset and the Y variable as character
-model_selection_lda <- function(df_train, df_test, Y){
+model_selection <- function(df_train, df_test, Y, FUN){
   # all covariates
   col_names <- colnames(df_train)
   col_names <- col_names[which(col_names != Y)]
@@ -88,7 +88,7 @@ model_selection_lda <- function(df_train, df_test, Y){
   for(i in 1:comb_nrs){
     myformula <- paste( Y, '~', var_comb[i, 1] ) #<--------------------
     myformula <- as.formula(myformula)
-    model_fit <- lda(myformula, data = df_train) #<--------------------
+    model_fit <- FUN(myformula, data = df_train) #<--------------------
     model_pred <- predict(model_fit, df_test) #<--------------------
     correct_pred <- which(model_pred$class != as.matrix(df_test[Y])) #<--------------------
     error <- length(correct_pred) / nrow(df_test[Y])
@@ -99,13 +99,13 @@ model_selection_lda <- function(df_train, df_test, Y){
 
 # Implements K-Fold Cross Validation
 # Takes a dataframe, the Y variable as charakter and the number of fold K
-k_fold_CV <- function(df, Y, K){
+k_fold_CV <- function(df, Y, K, FUN){
   fold <- round(nrow(df) / K)
   cross_val_err = matrix(data = NA, nrow = 2^(ncol(df)-1) - 1, ncol = K)
   for(i in 1:K){
     train_data <- df[-c((1+(i-1)*fold):(i*fold)),]
     testing_data <- df[(1+(i-1)*fold):(i*fold),]
-    err <- model_selection_lda(train_data, testing_data, Y)
+    err <- model_selection(train_data, testing_data, Y, FUN)
     cross_val_err[,i] <- err[, 1]
   }
   cross_val_err <- as.tibble(apply(cross_val_err, 1, mean, na.rm=TRUE))
@@ -116,7 +116,7 @@ k_fold_CV <- function(df, Y, K){
 # Implement over- and underbagging with CV Errors
 # Takes a dataframe, the Y variable as charakter, the number of bagged models B as well as
 # as well as the number of each class from the original df
-over_under_bagging <- function(df, Y, B, sample_size){
+over_under_bagging <- function(df, Y, B, sample_size, FUN){
   set.seed(123)
   classes <- as.matrix(unique(df[Y]))
   classes <- sort(classes)
@@ -130,7 +130,7 @@ over_under_bagging <- function(df, Y, B, sample_size){
     sampleB <- sample(1:nrow(subsetB), sample_size[2], replace = T)
     sampleC <- sample(1:nrow(subsetC), sample_size[3], replace = T)
     bagging_data <- rbind(subsetA[sampleA, ], subsetB[sampleB, ], subsetC[sampleC, ])
-    err <- k_fold_CV(bagging_data, Y, 10)
+    err <- k_fold_CV(bagging_data, Y, 10, FUN)
     CV_err[,i] <- as.matrix(err[, 1])
   }
   CV_err_final <- as.tibble(apply(CV_err, 1, mean, na.rm=TRUE))
@@ -141,7 +141,7 @@ over_under_bagging <- function(df, Y, B, sample_size){
 }
 
 # Implement over- and under-bagging with OOB Errors
-over_under_bagging <- function(df, Y, B, sample_size){
+over_under_bagging <- function(df, Y, B, sample_size, FUN){
   set.seed(123)
   classes <- as.matrix(unique(df[Y]))
   classes <- sort(classes)
@@ -160,7 +160,7 @@ over_under_bagging <- function(df, Y, B, sample_size){
     testing_data <- rbind(testing_data,
                           subsetB[-(sampleB), ], 
                           subsetC[-(sampleC), ])
-    err <- model_selection_lda(train_data, testing_data, Y)
+    err <- model_selection_lda(train_data, testing_data, Y, FUN)
     oob_err[,i] <- err
   }
   oob_err_final <- as.tibble(apply(oob_err, 1, mean, na.rm=TRUE))
@@ -174,8 +174,9 @@ over_under_bagging <- function(df, Y, B, sample_size){
 # implement LDA with under-bagging
 lda_under_bagging_error <- over_under_bagging(ny_data,
                                               Y = "Inspection.Grade",
-                                              B = 100,
-                                              sample_size = c(700, 700, 700))
+                                              B = 10,
+                                              sample_size = c(700, 700, 700),
+                                              FUN = lda)
 # implement LDA with over-bagging
 lda_over_bagging_error <- over_under_bagging(ny_data,
                                              Y = "Inspection.Grade",
@@ -196,7 +197,7 @@ ggplot(data = lda_error, aes(x = Covariates, group=1)) +
 
 # Lowest OOB Error is achievd wih under-bagging and the variables count + number_of_reviews
 
-rm(model_selection_lda, over_under_bagging, lda_over_bagging_error, lda_under_bagging_error)
+rm(model_selection, over_under_bagging, lda_over_bagging_error, lda_under_bagging_error)
 
 #########################################################################################
 
