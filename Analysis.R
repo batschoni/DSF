@@ -200,7 +200,7 @@ rm(model_selection_lda, over_under_bagging, lda_over_bagging_error, lda_under_ba
 
 #########################################################################################
 
-# LDA Estimation
+# LDA Estimate Selected Model
 #########################################################################################
 set.seed(1234)
 
@@ -223,21 +223,26 @@ bagging_sample <- function(df, Y, sample_size){
 }
 
 # number of bagging repetitions
-B = 10
+B = 100
 bagged_models=list()
 # empty matrix for bagging predictions
 bagged_predictions=matrix(data = NA, nrow = nrow(ny_data), ncol = B)
+# empty matrix for bagging used for the plot
+bagged_predictions_plot=matrix(data = NA, nrow = nrow(g), ncol = B)
 for (i in 1:B){
   # bagging sample
   sample <- bagging_sample(ny_data,
                  Y = "Inspection.Grade",
                  sample_size = c(700, 700, 700))
   # fits the model with the bagging sample
-  model_fit <- lda(Inspection.Grade~count + subway_distance, data = sample)
+  model_fit <- lda(Inspection.Grade~shop_density + count, data = sample)
   bagged_models <- c(bagged_models, list(model_fit))
   # predicts the values for the entire dataset
-  mode_pred <- predict(model_fit, newdata = ny_data)
-  bagged_predictions[, i] <- mode_pred$class
+  model_pred <- predict(model_fit, newdata = ny_data)
+  bagged_predictions[, i] <- model_pred$class
+  # predicts the values for the generated plot points
+  model_pred <- predict(model_fit, newdata = g)
+  bagged_predictions_plot[, i] <- model_pred$class
 }
 
 # Implements majority voting over the B bagging predictions
@@ -247,47 +252,37 @@ maj_vote <- function(x) {
 }
 
 pred_lda <- apply(bagged_predictions, 1, maj_vote)
+pred_lda <- factor(pred_lda, levels = c(3, 2, 1), labels = c("A", "B", "C"))
+pred_lda_plot <- apply(bagged_predictions_plot, 1, maj_vote)
+pred_lda_plot <- factor(pred_lda_plot, levels = c(3, 2, 1), labels = c("A", "B", "C"))
 
+rm(maj_vote, sample, model_fit, model_pred, B, i)
 
-lda_pred <- predict(test[2], data = data)
-
-lda_pred$post[, c("A","B")] %*% c(1,1)
-matrix((lda_pred$post[, c("A","B")] %*% c(1,1)), length(xs), length(ys))
-       
-lda_fit$scaling
-table(data$Inspection.Grade, lda_pred$class)
 
 # Grid values
+data = ny_data
 resolution = 200
-r <- sapply(data[c("count", "subway_distance")], range, na.rm = TRUE)
+r <- sapply(data[c("shop_density", "count")], range, na.rm = TRUE)
 xs <- seq(r[1,1], r[2,1], length.out = resolution)
 ys <- seq(r[1,2], r[2,2], length.out = resolution)
 g <- cbind(rep(xs, each=resolution), rep(ys, time = resolution))
 colnames(g) <- colnames(r)
 g <- as.data.frame(g)
-# Lda prediction
-lda_pred <- predict(lda_fit, g)
-lda_pred <- as.factor(lda_pred$class)
 # Grid data
-grid_data <- cbind(lda_pred, g)
+grid_data <- cbind(pred_lda_plot, g)
 grid_data <- as.data.frame(grid_data)
 # Decision border
 dec_border <- matrix(as.integer(lda_pred), nrow = resolution, byrow = TRUE)
 zs <- lda_pred$post[, c("A","B")] %*% c(1,1)
 
-ggplot(data = data, aes(y = shop_density, x = Number_of_Reviews)) +
-  #geom_point(data = grid_data, aes(color=lda_pred), alpha=0.1, size = 0.5) +
+ggplot(data = data, aes(y = shop_density, x = count)) +
+  geom_point(data = grid_data, aes(color=pred_lda_plot), alpha=0.3, size = 0.5) +
   geom_point(aes(color=Inspection.Grade), alpha=1)+
-  geom_contour(aes(y = ys, x = xs, z=zs), 
-               breaks=c(0,.5))
+  #geom_contour(aes(y = ys, x = xs, z=zs), 
+  #             breaks=c(0,.5))
   theme_gray()
 
 rm(g, grid_data, r, lda_pred, resolution, xs, ys, dec_border, zs)
 
-length(lda_pred)
-ggplot(data = data, aes(y = shop_density, x = count)) +
-  geom_point(aes(color=Inspection.Grade), alpha=1) +
-  theme_gray()
-#scale_color_manual(values=c("darkgreen", "yellow", "red")) 
 
 #########################################################################################
