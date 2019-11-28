@@ -1,5 +1,5 @@
-install.packages("gender")
-install.packages("genderdata", repos = "http://packages.ropensci.org", type = "source")
+#install.packages("gender")
+#install.packages("genderdata", repos = "http://packages.ropensci.org", type = "source")
 library("tidyverse")
 library("readr")
 library("gender")
@@ -136,3 +136,4 @@ filter(inspectionsDem, c("NEW YOKR", "KINGS COUNTY", "QUEENS", "RICHMOND"))
 
 write.csv(inspectionsDem, file = gzfile("C:/Users/andre/Documents/HSG/W-DS/inspectionsDem.cvs.gz"))
 INSPECTIONS <- read.csv("~/HSG/W-DS/inspectionsDem.cvs.gz")
+
