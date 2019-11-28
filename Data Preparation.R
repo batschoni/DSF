@@ -10,8 +10,8 @@ register_google(key = "") # the service is free but requires email registration
 library("sp") # Library for spatial data
 library("raster") # Library for spatial data
 =======
-  # Library for spatial data
-  library(sp)
+# Library for spatial data
+library(sp)
 library(raster)
 >>>>>>> 27bd7cd1fbaba01949d12d54ea3938ae86dc3d86
 library(rgdal)
@@ -55,7 +55,7 @@ inspect_data_chains = inspect_data %>%
 
 inspect_data_chains$chain[which(inspect_data_chains$count == 1)] = 0 #gives every owner the value 0 if only one shop owned
 inspect_data_chains$chain[which(inspect_data_chains$count >= 2)] = 1 #gives value 1 if > 1 shop owned
-
+inspect_data_chains = as.factor(inspect_data_chains)
 #merges the data
 inspect_data = inspect_data %>%
   inner_join(inspect_data_chains, by = "Owner.Name")
@@ -133,6 +133,7 @@ save(inspect_data, file = "./data/inspect_data.RData")
 # Haversine Formula
 haversine <- function(lat1, lon1, lat2, lon2){
   # to radians
+  browser()
   φ1 <- (lat1 * pi) / (180)
   φ2 <- (lat2 * pi) / (180)
   Δφ <- ((lat2 - lat1) * pi) / (180)
@@ -219,7 +220,7 @@ ny_counties <-  c("New York", "Kings", "Bronx", "Richmond", "Queens")
 ny_inspect_data <- inspect_data[which(inspect_data$County %in% ny_counties),]
 rm(ny_counties)
 
-save(ny_inspect_data, file = "./data/ny_inspect_data.RData")
+save(inspect_data, file = "./data/ny_inspect_data.RData")
 #########################################################################################
 
 # Add Airbnb Data
@@ -259,7 +260,6 @@ ny_inspect_data = inner_join(ny_inspect_data, data_bnb, by = "Zip.Code")
 
 rm(Coordinates, data_bnb, pts, s, summary, zip_where, latitude, longitude)
 
-save(ny_inspect_data, file = "./data/ny_inspect_data.RData")
 #########################################################################################
 
 # NYC Subway locations
@@ -283,8 +283,8 @@ subway_data <- subway_data %>%
 # Distances in meter to next subway station (ONLY NYC)
 subway_distance <- c()
 for (i in 1:nrow(ny_inspect_data)){
-  lat <-  as.numeric(ny_inspect_data$Latitude[i])
-  lon <-  as.numeric(ny_inspect_data$Longitude[i])
+  lat <-  as.numeric(ny_inspect_data$Latitude[125])
+  lon <-  as.numeric(ny_inspect_data$Longitude[125])
   distances <- haversine(lat, lon, subway_data$Latitude, subway_data$Longitude)
   distances <- min(distances)
   subway_distance <-  c(subway_distance, distances)
@@ -294,6 +294,6 @@ ny_inspect_data <- ny_inspect_data %>%
   mutate(subway_distance = subway_distance)
 
 rm(i, lat, lon, subway_data, haversine, subway_distance, distances)
-
 save(ny_inspect_data, file = "./data/ny_inspect_data.RData")
 #########################################################################################
+
