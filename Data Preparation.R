@@ -218,7 +218,7 @@ save(ny_inspect_data, file = "./data/ny_inspect_data.RData")
 demographic_data <- read.csv("./data/inspectionsDem.cvs.gz")
 #abc <- demographic_data[!duplicated(demographic_data$Street), ]
 #same adress but different inspection
-ny_inspect_dem <- merge(ny_inspect_data, demographic_data, by = "Street")
+ny_inspect_dem <- inner_join(ny_inspect_data, demographic_data, by = "Street")
 ny_inspect_data <- ny_inspect_dem
 #ny_inspect_dem <- ny_inspect_dem[!duplicated(ny_inspect_dem$Street), ]
 
