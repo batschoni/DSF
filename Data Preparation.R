@@ -183,17 +183,6 @@ rm(distances, i, inspect_grade, lat, lon, rating_closest_neighb, shop_density, n
 save(inspect_data, file = "./data/inspect_data.RData")
 #########################################################################################
 
-# Add Demographic Information
-#########################################################################################
-demographic_data <- read.csv("./data/inspectionsDem.cvs.gz")
-#abc <- demographic_data[!duplicated(demographic_data$Street), ]
-#same adress but different inspection
-ny_inspect_dem <- merge(ny_inspect_data, demographic_data, by = "Street")
-ny_inspect_data <- ny_inspect_dem
-#ny_inspect_dem <- ny_inspect_dem[!duplicated(ny_inspect_dem$Street), ]
-
-#########################################################################################
-
 # Add Google Ratings
 #########################################################################################
 load("data/results_scraping_final")
@@ -221,6 +210,19 @@ ny_inspect_data <- inspect_data[which(inspect_data$County %in% ny_counties),]
 rm(ny_counties)
 
 save(inspect_data, file = "./data/ny_inspect_data.RData")
+#########################################################################################
+
+# Add Demographic Information
+#########################################################################################
+
+
+demographic_data <- read.csv("./data/inspectionsDem.cvs.gz")
+#abc <- demographic_data[!duplicated(demographic_data$Street), ]
+#same adress but different inspection
+ny_inspect_dem <- inner_join(ny_inspect_data, demographic_data, by = "Street")
+ny_inspect_data <- ny_inspect_dem
+#ny_inspect_dem <- ny_inspect_dem[!duplicated(ny_inspect_dem$Street), ]
+
 #########################################################################################
 
 # Add Airbnb Data
