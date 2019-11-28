@@ -215,7 +215,6 @@ save(ny_inspect_data, file = "./data/ny_inspect_data.RData")
 #########################################################################################
 
 demographic_data <- read.csv("./data/inspectionsDem.cvs.gz")
-length(unique(demographic_data$Street))
 demographic_data <- demographic_data %>% distinct(Street, .keep_all = TRUE)
 ny_inspect_dem <- merge(ny_inspect_data, demographic_data, by = "Street")
 ny_inspect_data <- ny_inspect_dem
