@@ -10,8 +10,8 @@ register_google(key = "") # the service is free but requires email registration
 library("sp") # Library for spatial data
 library("raster") # Library for spatial data
 =======
-# Library for spatial data
-library(sp)
+  # Library for spatial data
+  library(sp)
 library(raster)
 >>>>>>> 27bd7cd1fbaba01949d12d54ea3938ae86dc3d86
 library(rgdal)
@@ -182,20 +182,10 @@ rm(distances, i, inspect_grade, lat, lon, rating_closest_neighb, shop_density, n
 save(inspect_data, file = "./data/inspect_data.RData")
 #########################################################################################
 
-# Add Demographic Information
-#########################################################################################
-demographic_data <- read.csv("./data/inspectionsDem.cvs.gz")
-#abc <- demographic_data[!duplicated(demographic_data$Street), ]
-#same adress but different inspection
-ny_inspect_dem <- merge(ny_inspect_data, demographic_data, by = "Street")
-ny_inspect_data <- ny_inspect_dem
-#ny_inspect_dem <- ny_inspect_dem[!duplicated(ny_inspect_dem$Street), ]
-
-#########################################################################################
-
 # Add Google Ratings
 #########################################################################################
-google_ratings <-  read.csv("data/results_scraping.csv")
+load("data/results_scraping_final")
+google_ratings <-  data
 google_ratings <- dplyr::select(google_ratings, -X)
 #google_ratings = google_ratings[complete.cases(google_ratings[,]),]
 #google_ratings$Reviews[which(google_ratings$Reviews!=0)] = 1
@@ -205,7 +195,7 @@ inspect_data <- inspect_data %>%
   dplyr::select(-City.y) %>%
   rename(City = City.x) 
 
-rm(google_ratings)
+rm(google_ratings, data)
 
 save(inspect_data, file = "./data/inspect_data.RData")
 #########################################################################################
@@ -218,7 +208,20 @@ ny_counties <-  c("New York", "Kings", "Bronx", "Richmond", "Queens")
 ny_inspect_data <- inspect_data[which(inspect_data$County %in% ny_counties),]
 rm(ny_counties)
 
-save(inspect_data, file = "./data/ny_inspect_data.RData")
+save(ny_inspect_data, file = "./data/ny_inspect_data.RData")
+#########################################################################################
+
+# Add Demographic Information
+#########################################################################################
+
+
+demographic_data <- read.csv("./data/inspectionsDem.cvs.gz")
+#abc <- demographic_data[!duplicated(demographic_data$Street), ]
+#same adress but different inspection
+ny_inspect_dem <- inner_join(ny_inspect_data, demographic_data, by = "Street")
+ny_inspect_data <- ny_inspect_dem
+#ny_inspect_dem <- ny_inspect_dem[!duplicated(ny_inspect_dem$Street), ]
+
 #########################################################################################
 
 # Add Airbnb Data
@@ -258,6 +261,7 @@ ny_inspect_data = inner_join(ny_inspect_data, data_bnb, by = "Zip.Code")
 
 rm(Coordinates, data_bnb, pts, s, summary, zip_where, latitude, longitude)
 
+save(ny_inspect_data, file = "./data/ny_inspect_data.RData")
 #########################################################################################
 
 # NYC Subway locations
@@ -293,5 +297,5 @@ ny_inspect_data <- ny_inspect_data %>%
 
 rm(i, lat, lon, subway_data, haversine, subway_distance, distances)
 
+save(ny_inspect_data, file = "./data/ny_inspect_data.RData")
 #########################################################################################
-
