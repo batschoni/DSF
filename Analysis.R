@@ -34,6 +34,9 @@ ny_data <- ny_inspect_data %>%
                   Avr_Price,
                   subway_distance))
 
+ny_data <- ny_data %>%
+  mutate(neighbourhood_group = as.numeric(neighbourhood_group))
+
 table(is.na(ny_data$Number_of_Reviews))
 
 rm(ny_inspect_data, inspect_data)
@@ -445,11 +448,13 @@ model_selection_KNN <- function(df_train, df_test, Y, K){
   # all covariates
   col_names <- colnames(df_train)
   col_names <- col_names[which(col_names != Y)]
-  Y_train <- as.matrix(df_train[, Y])
+  # Class vector
+  Y_train <- df_train[, Y]
+  # Change format that it works with knn function
+  Y_train <- factor(as.matrix(Y_train))
   df_train <- df_train[, col_names]
   df_test <- df_test[, col_names]
   comb_nrs <- 2^length(col_names) - 1
-  var_comb <- matrix(data = NA, ncol = 1, nrow = comb_nrs)
   row_names <- c()
   row_nr <- 1
   comb_size <- 0
@@ -457,7 +462,6 @@ model_selection_KNN <- function(df_train, df_test, Y, K){
   for(i in 1:iterations){
     comb_size <- comb_size + ncol(combn(col_names, i))
     row_names <- c(row_names, combn(col_names, i, function(x) paste(x, collapse='\n')))
-    var_comb[row_nr:comb_size, 1] <- combn(col_names, i, function(x) paste(x, collapse=' + '))
     row_nr <- row_nr + ncol(combn(col_names, i))
   }
   # add numbers to row labels
@@ -467,8 +471,8 @@ model_selection_KNN <- function(df_train, df_test, Y, K){
   for(i in 1:iterations){
     for(j in 1:combn(1:length(comb_nrs), i)){
     df_train_KNN <- df_train[, combn(1:length(comb_nrs), i)[, j]]
-    df_train_KNN <- df_test[, combn(1:length(comb_nrs), 2)[, i]]
-    model_fit <- KNN(df_train, df_test, cl = Y_train, k = K)
+    df_test_KNN <- df_test[, combn(1:length(comb_nrs), i)[, j]]
+    model_fit <- knn(train = df_train, test = df_test, cl = Y_train, k = K)
     correct_pred <- which(model_fit != as.matrix(df_test[Y]))
     error <- length(correct_pred) / nrow(df_test[Y])
     error_rate[i, 1] <- error
@@ -477,8 +481,16 @@ model_selection_KNN <- function(df_train, df_test, Y, K){
   return(error_rate)
 }
 
-Y_train <- ny_data[1:4000, "Inspection.Grade"]
-knn(train = ny_data[1:4000, 2:5], test = ny_data[4001:7000, 2:5], cl = as.matrix(Y_train), k = 10)
+as.numeric((Y_train))
+
+Y_train <- factor(as.matrix(ny_data[1:4000, "Inspection.Grade"]))
+as.numeric(factor(as.matrix(Y_train)))
+df_train <- ny_data[1:4000, c(1:6, 8:10)]
+df_test <- ny_data[4001:7000, c(1:6, 8:10)]
+
+knn(train = df_train, test = df_test, cl = Y_train, k = 10)
+
+model_selection_KNN(df_train, df_test, "Inspection.Grade", 10)
 
 k_fold_CV <- function(df, Y, K, k){
   fold <- round(nrow(df) / K)
@@ -520,7 +532,7 @@ over_under_bagging <- function(df, Y, B, sample_size, k){
 
 
 # implement QDA with under-bagging
-kkn_under_bagging_error <- over_under_bagging(ny_data,
+kn_under_bagging_error <- over_under_bagging(ny_data,
                                               Y = "Inspection.Grade",
                                               B = 10,
                                               sample_size = c(700, 700, 700),
