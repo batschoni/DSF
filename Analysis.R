@@ -2,7 +2,7 @@ library(MASS) # For Discriminant Analysis
 library(ISLR) # For Discriminant Analysis
 library(class) # For KNN
 
-# Tranformation before analysis
+# Tranformation before analysis----
 #########################################################################################
 
 # Load data for entire state
@@ -34,6 +34,7 @@ ny_data <- ny_inspect_data %>%
                   Avr_Price,
                   subway_distance))
 
+# change the variable from factor to numeric for KNN and Boosting
 ny_data <- ny_data %>%
   mutate(neighbourhood_group = as.numeric(neighbourhood_group))
 
@@ -45,7 +46,7 @@ rm(ny_inspect_data, inspect_data)
 
 #########################################################################################
 
-# First descriptive plots
+# First descriptive plots----
 #########################################################################################
 #install.packages("ggthemes")
 library(ggthemes)
@@ -60,7 +61,7 @@ ggplot(data = ny_data, aes(x=Inspection.Grade)) +
 
 #########################################################################################
 
-# LDA Model Selection
+# LDA Model Selection----
 #########################################################################################
 
 
@@ -234,7 +235,7 @@ rm(lda_over_bagging_error, lda_under_bagging_error)
 
 #########################################################################################
 
-# LDA Estimate Selected Model
+# LDA Estimate Selected Model----
 #########################################################################################
 set.seed(1234)
 
@@ -321,7 +322,7 @@ rm(g, grid_data, r, lda_pred, resolution, xs, ys, dec_border, zs)
 
 #########################################################################################
 
-# QDA Model Selection
+# QDA Model Selection----
 #########################################################################################
 
 # LDA assumes that covariates have a multivariate Gaussian distribution
@@ -370,7 +371,7 @@ rm(model_selection, over_under_bagging, lda_over_bagging_error, lda_under_baggin
 
 #########################################################################################
 
-# QDA Estimate Selected Model
+# QDA Estimate Selected Model----
 #########################################################################################
 set.seed(1234)
 
@@ -439,43 +440,41 @@ rm(g, grid_data, r, lda_pred, resolution, xs, ys, dec_border, zs)
 
 #########################################################################################
 
-# KNN Model Selection
+# KNN Model Selection----
 #########################################################################################
 
-
+# Slightly adjust the function to KNN
 model_selection_KNN <- function(df_train, df_test, Y, K){
-  browser()
   # all covariates
   col_names <- colnames(df_train)
   col_names <- col_names[which(col_names != Y)]
-  # Class vector
+  # Class vectors
   Y_train <- df_train[, Y]
+  Y_test <- df_test[, Y]
   # Change format that it works with knn function
   Y_train <- factor(as.matrix(Y_train))
   df_train <- df_train[, col_names]
   df_test <- df_test[, col_names]
   comb_nrs <- 2^length(col_names) - 1
   row_names <- c()
-  row_nr <- 1
   comb_size <- 0
   iterations <- length(col_names)
   for(i in 1:iterations){
     comb_size <- comb_size + ncol(combn(col_names, i))
     row_names <- c(row_names, combn(col_names, i, function(x) paste(x, collapse='\n')))
-    row_nr <- row_nr + ncol(combn(col_names, i))
   }
-  # add numbers to row labels
-  row_names <- paste(1:length(row_names), sep = " ", row_names)
   error_rate <- matrix(data = NA, ncol = 1, nrow = comb_nrs)
   rownames(error_rate) <- row_names
+  counter <- 1
   for(i in 1:iterations){
-    for(j in 1:combn(1:length(comb_nrs), i)){
-    df_train_KNN <- df_train[, combn(1:length(comb_nrs), i)[, j]]
-    df_test_KNN <- df_test[, combn(1:length(comb_nrs), i)[, j]]
+    for(j in 1:ncol(combn(1:iterations, i))){
+    df_train_KNN <- df_train[, combn(1:iterations, i)[, j]]
+    df_test_KNN <- df_test[, combn(1:iterations, i)[, j]]
     model_fit <- knn(train = df_train, test = df_test, cl = Y_train, k = K)
-    correct_pred <- which(model_fit != as.matrix(df_test[Y]))
-    error <- length(correct_pred) / nrow(df_test[Y])
-    error_rate[i, 1] <- error
+    wrong_pred <- which(model_fit != as.matrix(Y_test))
+    error <- length(wrong_pred) / nrow(Y_test)
+    error_rate[counter, 1] <- error
+    counter <- counter + 1
     }
   }
   return(error_rate)
@@ -485,8 +484,8 @@ as.numeric((Y_train))
 
 Y_train <- factor(as.matrix(ny_data[1:4000, "Inspection.Grade"]))
 as.numeric(factor(as.matrix(Y_train)))
-df_train <- ny_data[1:4000, c(1:6, 8:10)]
-df_test <- ny_data[4001:7000, c(1:6, 8:10)]
+df_train <- ny_data[1:4000, ]
+df_test <- ny_data[4001:7000, ]
 
 knn(train = df_train, test = df_test, cl = Y_train, k = 10)
 
@@ -531,18 +530,25 @@ over_under_bagging <- function(df, Y, B, sample_size, k){
 }
 
 
-# implement QDA with under-bagging
-kn_under_bagging_error <- over_under_bagging(ny_data,
-                                              Y = "Inspection.Grade",
-                                              B = 10,
-                                              sample_size = c(700, 700, 700),
-                                              k = 10)
-# implement LDA with over-bagging
+# implement KNN with different Ks and under-bagging
+Ks = 10
+knn_under_bagging_error <- matrix(data = NA, 
+                                  ncol = 2^(ncol(ny_data) - 1) -1,
+                                  nrow = Ks)
+for(i in 1:Ks){
+  knn_under_bagging_error[, Ks] <- over_under_bagging(ny_data,
+                                                Y = "Inspection.Grade",
+                                                B = 10,
+                                                sample_size = c(700, 700, 700),
+                                                k = Ks)
+}
+
+# implement KNN with different Ks and over-bagging
 kkn_over_bagging_error <- over_under_bagging(ny_data,
                                              Y = "Inspection.Grade",
                                              B = 10,
                                              sample_size = c(5000, 5000, 5000),
-                                             FUN = qda)
+                                             k = 10)
 
 lda_error <- full_join(lda_under_bagging_error, lda_over_bagging_error, by = "rownames(err)")
 
