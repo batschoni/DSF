@@ -113,8 +113,6 @@ AddTrac$`11` <- lapply(AddTrac$`11`, f2)
 AddTrac <- unite(AddTrac, TractId, c("9","10","11"), sep = "")
 colnames(AddTrac)[1:2] <- c("Numbers","Address")
 AddTrac <- AddTrac[,c("Address","TractId")]
-#should not exist anymore: AddTrac$TractId <- gsub("NANANA", NA, AddTrac$TractId)
-
 
 #######
 # Match AddTrac with Inspections to have the TractId numbers included in the Inspections Dataframe
