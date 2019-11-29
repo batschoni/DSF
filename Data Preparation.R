@@ -31,7 +31,7 @@ inspect_data <- as_tibble(inspect_data)
 
 # Inspection grade as numbers
 # Required because we calculate averages later on which is not possible with Factors
-mapping <- c("A" = 3, "B" = 2, "C" = 1)
+mapping <- c("A" = 1, "B" = 2, "C" = 3)
 inspect_data <- inspect_data %>%
   mutate(Inspection.Grade = mapping[Inspection.Grade])
 
@@ -323,7 +323,7 @@ for (i in 1:nrow(ny_inspect_data)){
 ny_inspect_data <- ny_inspect_data %>%
   mutate(subway_distance = subway_distance)
 
-rm(i, lat, lon, subway_data, haversine, subway_distance, distances)
+rm(i, lat, lon, haversine, subway_distance, distances)
 
 save(ny_inspect_data, file = "./data/ny_inspect_data.RData")
 
@@ -355,11 +355,14 @@ Plot1a <- ggmap(map_ny_state) +
 
 Plot1b <- ggmap(map_nyc) +
   geom_point(aes(x = Longitude, y = Latitude, color=factor(Inspection.Grade)), data = ny_inspect_data, size = 0.6) +
-  labs(fill = "Rating")
+  scale_color_manual(labels = c("A", "B", "C"), values = c("blue", "red", "green")) +
+  labs(color = "Rating")
 
 Plot1 <- grid.arrange(Plot1a, Plot1b, ncol=2)
 
 # Save Plot1
-ggsave("./plots/Plot2_Map.eps", plot = Plot1)
+ggsave("./plots/Plot1_Map.png", plot = Plot1a)
+ggsave("./plots/Plot2_Map.png", plot = Plot1b)
 
+rm(subway_data)
 #########################################################################################
