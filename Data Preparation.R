@@ -242,8 +242,8 @@ names(demographic_data)
 demographic_data <- demographic_data[!(names(demographic_data) %in% c("County", "Inspection.Grade" , "Inspection.Date", "Owner.Name" , "Trade.Name", "Street", "City", "State.Code", "Zip.Code","Deficiency.Number","Deficiency.Description"))]
 ny_inspect_data <- unite(ny_inspect_data, Address , c(Street, City, State.Code, Zip.Code), sep = ", ", remove = FALSE)
 ny_inspect_dem <- merge(ny_inspect_data, demographic_data, by = "Address")
+ny_inspect_dem <- ny_inspect_dem[complete.cases(ny_inspect_dem),]
 ny_inspect_data <- ny_inspect_dem
-names(ny_inspect_dem)
 
 rm(ny_inspect_dem, demographic_data)
 
