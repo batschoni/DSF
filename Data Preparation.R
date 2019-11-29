@@ -338,3 +338,37 @@ save(ny_inspect_data, file = "./data/ny_inspect_data.RData")
 
 #########################################################################################
 
+# Create Map Plots of State Data and NY City Data
+#########################################################################################
+
+# Plot1: Map of NYC with Points
+
+# Retrieves State Map (Takes a while)
+map_ny_state <- get_stamenmap(bbox = c(left = -79.7517, bottom = 40.5092, right = -71.9069, top = 44.9967),
+                            zoom = 11,
+                            maptype ='terrain',
+                            color = 'color',
+                            scale = 4)
+
+# Retrieves City Map
+map_nyc <- get_stamenmap(bbox = c(left = -74.2000, bottom = 40.5500, right = -73.6500, top = 40.9500),
+                         zoom = 11,
+                         maptype ='terrain',
+                         color = 'color',
+                         scale = 4)
+
+
+Plot1a <- ggmap(map_ny_state) +
+  geom_point(aes(x = Longitude, y = Latitude, color=factor(Inspection.Grade)), data = ny_inspect_data, size = 0.6) +
+  theme(legend.position = "none")
+
+Plot1b <- ggmap(map_nyc) +
+  geom_point(aes(x = Longitude, y = Latitude, color=factor(Inspection.Grade)), data = ny_inspect_data, size = 0.6) +
+  labs(fill = "Rating")
+
+Plot1 <- grid.arrange(plot1, plot2, ncol=2)
+
+# Save Plot2
+ggsave("./plots/Plot2_Map.eps", plot = Plot2)
+
+#########################################################################################
