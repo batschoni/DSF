@@ -1,6 +1,8 @@
 library(MASS) # For Discriminant Analysis
 library(ISLR) # For Discriminant Analysis
 library(class) # For KNN
+library(ggmap) # For Maps
+ggmap::register_google(key = "")
 
 # Tranformation before analysis----
 #########################################################################################
@@ -40,25 +42,46 @@ ny_data <- ny_data %>%
 
 table(is.na(ny_data$Number_of_Reviews))
 
-rm(ny_inspect_data, inspect_data)
-
 # NA check
 
 #########################################################################################
 
 # First descriptive plots----
 #########################################################################################
-#install.packages("ggthemes")
-library(ggthemes)
 
-ggplot(data = ny_data, aes(x=Inspection.Grade)) +
+# Plot1: Histogram of imbalanced data
+Plot1 <- ggplot(data = ny_data, aes(x=Inspection.Grade)) +
   geom_histogram(stat = "count", fill = "lightgrey") +
   theme(legend.position="top") +
   labs(title="Histogram of Inspection Grades",
        x="Grade from A to C",
        y = "Count") +
   theme_gray()
+# Save Plot1
+ggsave("./plots/Plot1_Imbalanced Histogram.eps", plot = Plot1)
 
+# Plot2: Map of NYC with Points
+ph_basemap <- get_googlemap(center = c(lon = -73.935242, lat = 40.730610),
+                            zoom = 11,
+                            maptype ='terrain',
+                            color = 'color',
+                            scale = 2)
+
+ph_basemap <- get_stamenmap(bbox = c(left = -74.2000, bottom = 40.5500, right = -73.6500, top = 40.9500),
+                            zoom = 11,
+                            maptype ='terrain',
+                            color = 'color',
+                            scale = 4)
+
+
+Plot2 <- ggmap(ph_basemap) +
+  geom_point(aes(x = Longitude, y = Latitude, color=factor(Inspection.Grade)), data = ny_inspect_data, size = 0.6)
+# Save Plot2
+ggsave("./plots/Plot2_Map.eps", plot = Plot2)
+
+rm(Plot1)
+
+rm(ny_inspect_data, inspect_data)
 #########################################################################################
 
 # LDA Model Selection----

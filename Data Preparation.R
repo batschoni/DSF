@@ -211,7 +211,7 @@ save(ny_inspect_data, file = "./data/ny_inspect_data.RData")
 # Add Demographic Information
 #########################################################################################
 
-demographic_data <- read.csv("~/GitHub/DSF/data/inspectionsDem.cvs.gz")
+demographic_data <- read.csv("./data/inspectionsDem.cvs.gz")
 length(unique(demographic_data$Address))
 demographic_data <- demographic_data %>% distinct(Address, .keep_all = TRUE)
 names(demographic_data)
@@ -219,7 +219,7 @@ demographic_data <- demographic_data[!(names(demographic_data) %in% c("County", 
 ny_inspect_data <- unite(ny_inspect_data, Address , c(Street, City, State.Code, Zip.Code), sep = ", ", remove = FALSE)
 ny_inspect_dem <- merge(ny_inspect_data, demographic_data, by = "Address")
 ny_inspect_data <- ny_inspect_dem
-
+names(ny_inspect_dem)
 
 #########################################################################################
 
