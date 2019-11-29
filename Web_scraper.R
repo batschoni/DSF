@@ -75,7 +75,15 @@ for (i in 1:length(scraping_p_vector)) {
     
   }
 }
-  
+
+#Cleaning the scraped data
+results_scraping[,4] = as.numeric(str_remove(results_scraping[,4], "Google review" )) #removes "google reviews" string +  converts to numeric
+results_scraping[,3] = as.numeric(results_scraping[,3])
+results_scraping$Number_of_Reviews = substr(results_scraping$Number_of_Reviews,1,nchar(results_scraping$Number_of_Reviews)-14)
+results_scraping$Number_of_Reviews[which(results_scraping$Number_of_Reviews == "")] = 0
+results_scraping$Number_of_Reviews = as.numeric(str_trim(str_remove_all(results_scraping$Number_of_Reviews, "’")))
+
+
 #Saving the Review-Data in csv
 write.csv(results_scraping, file="results_scraping.csv")
 
