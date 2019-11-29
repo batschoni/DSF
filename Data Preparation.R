@@ -212,14 +212,16 @@ save(ny_inspect_data, file = "./data/ny_inspect_data.RData")
 #########################################################################################
 
 demographic_data <- read.csv("~/GitHub/DSF/data/inspectionsDem.cvs.gz")
-demographic_data <- demographic_data %>% distinct(Address, .keep_all = TRUE)
-demographic_data <- unite(demographic_data, Address.Name, c(Address, Trade.Name), sep = ", ")
-demographic_data <- demographic_data[!(names(demographic_data) %in% c("County", "Inspection.Grade" , "Inspection.Date", "Owner.Name" , "Street", "City", "State.Code", "Zip.Code","Deficiency.Number","Deficiency.Description", "X", "Men.per.CenTrac", "Woman.per.CentTrac"))]
-ny_inspect_data <- unite(ny_inspect_data, Address.Name , c(Street, City, State.Code, Zip.Code, Trade.Name), sep = ", ", remove = FALSE)
-ny_inspect_dem <- merge(ny_inspect_data, demographic_data, by = "Address.Name")
+length(unique(demographic_data$Address))
+#demographic_data <- demographic_data %>% distinct(Address, .keep_all = TRUE)
+demographic_data <- demographic_data[!(names(demographic_data) %in% c("County", "Inspection.Grade" , "Inspection.Date", "Owner.Name" , "Street", "City", "State.Code", "Zip.Code","Deficiency.Number","Deficiency.Description"))]
+ny_inspect_data <- unite(ny_inspect_data, Address , c(Street, City, State.Code, Zip.Code), sep = ", ", remove = FALSE)
+length(unique(ny_inspect_data$Address))
+ny_inspect_dem <- merge(ny_inspect_data, demographic_data, by = "Address")
 #ny_inspect_data <- ny_inspect_dem
-#all(ny_inspect_dem$Trade.Name.x == ny_inspect_dem$Trade.Name.y)
-#ny_inspect_dem$Trade.Name.x[!(ny_inspect_dem$Trade.Name.x %in% ny_inspect_dem$Trade.Name.y)]
+comp <- ny_inspect_dem[, c("Trade.Name.x", "Trade.Name.y")]
+all(ny_inspect_dem$Trade.Name.x == ny_inspect_dem$Trade.Name.y)
+ny_inspect_dem$Trade.Name.x[!(ny_inspect_dem$Trade.Name.x %in% ny_inspect_dem$Trade.Name.y)]
 
 
 #########################################################################################
