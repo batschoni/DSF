@@ -38,7 +38,10 @@ rm(mapping)
 
 inspect_data = inspect_data %>% 
   mutate(Inspection.Date = as.Date(Inspection.Date, format = "%m/%d/%Y")) %>% #convert values to dates for calculation
+<<<<<<< HEAD
   dplyr::mutate(id = row_number()) %>% #add row number as id
+=======
+>>>>>>> 21229189ed099b9b7abbcbfbc9cf6ce66b82e734
   filter(Trade.Name != "") %>% #drops 7obs with missing trade name
   arrange(Inspection.Date) #sort by date
 
@@ -183,15 +186,27 @@ rm(distances, i, inspect_grade, lat, lon, rating_closest_neighb, shop_density, n
 save(inspect_data, file = "./data/inspect_data.RData")
 #########################################################################################
 
-# Add Google Ratings
+# Add Google Ratings----
 #########################################################################################
 load("data/results_scraping_final")
 google_ratings <-  data
+<<<<<<< HEAD
 google_ratings <- dplyr::select(google_ratings, -X)
 #google_ratings = google_ratings[complete.cases(google_ratings[,]),]
 #google_ratings$Reviews[which(google_ratings$Reviews!=0)] = 1
 inspect_data = inner_join(inspect_data, google_ratings, by = "Trade.Name")
 
+=======
+google_ratings <- google_ratings %>%
+  dplyr::select(-X)
+
+# Merge data with ratings via Trade.Name
+# (Trade.Name is by construction unique)
+inspect_data <-  inspect_data %>%
+  inner_join(google_ratings, by = "Trade.Name")
+
+# remove unneeded columns
+>>>>>>> 21229189ed099b9b7abbcbfbc9cf6ce66b82e734
 inspect_data <- inspect_data %>%
   dplyr::select(-City.y) %>%
   rename(City = City.x) 
@@ -201,18 +216,27 @@ rm(google_ratings, data)
 save(inspect_data, file = "./data/inspect_data.RData")
 #########################################################################################
 
-# Filter for New York City
+# Filter for New York City----
 #########################################################################################
 
-# only NY City
-ny_counties <-  c("New York", "Kings", "Bronx", "Richmond", "Queens")
+# Next we reduce our data set to the neighbourhoods of NY City.
+# We work only with NYC data because data for more variables is available
+# and the data is less imbalanced.
+# The following codes, therefore, only deal with NYC data
+
+ny_counties <-  c("New York", "Kings", "Bronx", "Richmond", "Queens") # NYC counties
 ny_inspect_data <- inspect_data[which(inspect_data$County %in% ny_counties),]
 rm(ny_counties)
 
+<<<<<<< HEAD
 save(inspect_data, file = "./data/ny_inspect_data.RData")
+=======
+save(ny_inspect_data, file = "./data/ny_inspect_data.RData")
+
+>>>>>>> 21229189ed099b9b7abbcbfbc9cf6ce66b82e734
 #########################################################################################
 
-# Add Demographic Information
+# Add Demographic Information----
 #########################################################################################
 
 demographic_data <- read.csv("data/inspectionsDem.cvs.gz")
@@ -225,8 +249,9 @@ ny_inspect_data <- ny_inspect_dem
 
 #########################################################################################
 
-# Add Airbnb Data
+# Add Airbnb Data----
 #########################################################################################
+
 data_bnb <- read.csv("data/ab_nyc_19.csv") #reading data
 
 longitude = as.numeric(data_bnb$longitude)
@@ -262,16 +287,21 @@ ny_inspect_data = inner_join(ny_inspect_data, data_bnb, by = "Zip.Code")
 
 rm(Coordinates, data_bnb, pts, s, summary, zip_where, latitude, longitude)
 
+<<<<<<< HEAD
+=======
+save(ny_inspect_data, file = "./data/ny_inspect_data.RData")
+
+>>>>>>> 21229189ed099b9b7abbcbfbc9cf6ce66b82e734
 #########################################################################################
 
-# NYC Subway locations
+# NYC Subway locations----
 #########################################################################################
 
 # Initially download and save the file
 #subway_data <- read.csv("https://data.ny.gov/api/views/i9wp-a4ja/rows.csv?accessType=DOWNLOAD&sorting=true", stringsAsFactors = FALSE)
 #save(subway_data, file = "./data/subway_data.RData")
 
-# Load the saved data
+# Load the previously saved subway locations
 load("./data/subway_data.RData")
 
 subway_data <- as_tibble(subway_data)
@@ -282,12 +312,20 @@ subway_data <- subway_data %>%
   rename(Latitude = Station.Latitude,
          Longitude = Station.Longitude)
 
-# Distances in meter to next subway station (ONLY NYC)
+# Distances in meter to next subway station
 subway_distance <- c()
 for (i in 1:nrow(ny_inspect_data)){
+<<<<<<< HEAD
   lat <-  as.numeric(ny_inspect_data$Latitude[125])
   lon <-  as.numeric(ny_inspect_data$Longitude[125])
+=======
+  # coordinates of i-th obs.
+  lat <-  as.numeric(ny_inspect_data$Latitude[i])
+  lon <-  as.numeric(ny_inspect_data$Longitude[i])
+  # distance of i-th point to all subway stations
+>>>>>>> 21229189ed099b9b7abbcbfbc9cf6ce66b82e734
   distances <- haversine(lat, lon, subway_data$Latitude, subway_data$Longitude)
+  # shortest distance
   distances <- min(distances)
   subway_distance <-  c(subway_distance, distances)
 }
@@ -297,5 +335,6 @@ ny_inspect_data <- ny_inspect_data %>%
 
 rm(i, lat, lon, subway_data, haversine, subway_distance, distances)
 save(ny_inspect_data, file = "./data/ny_inspect_data.RData")
+
 #########################################################################################
 
