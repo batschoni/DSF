@@ -1,3 +1,7 @@
+
+# Header----
+#########################################################################################
+
 # Install required packages
 # install.packages("ggmap")
 # install.packages("raster")
@@ -5,28 +9,25 @@
 
 library(tidyverse)
 library(ggmap) # to get coordinates from a address
-register_google(key = "") # the service is free but requires email registration
-library("sp") # Library for spatial data
-library("raster") # Library for spatial data
-# Library for spatial data
-library(sp)
-library(raster)
+register_google(key = "") # the service is free but requires email registration and a API
 library(rgdal)
 
+#########################################################################################
 
-# downlaod and first cleaning of inspection data
+# downlaod and first cleaning of inspection data----
 #########################################################################################
 
 # Initially download and save the file
 #inspect_data <- read.csv("https://data.ny.gov/api/views/d6dy-3h7r/rows.csv?accessType=DOWNLOAD", stringsAsFactors = FALSE)
 #save(inspect_data, file = "./data/inspect_data_original.RData")
 
-# Load the original file previously downloaded
+# Load original file previously downloaded
 load("./data/inspect_data_original.RData")
 
 inspect_data <- as_tibble(inspect_data)
 
 # Inspection grade as numbers
+# Required because we calculate averages later on which is not possible with Factors
 mapping <- c("A" = 3, "B" = 2, "C" = 1)
 inspect_data <- inspect_data %>%
   mutate(Inspection.Grade = mapping[Inspection.Grade])
@@ -35,11 +36,11 @@ rm(mapping)
 
 inspect_data = inspect_data %>% 
   mutate(Inspection.Date = as.Date(Inspection.Date, format = "%m/%d/%Y")) %>% #convert values to dates for calculation
-  dplyr::mutate(id = row_number()) %>% #add row number as id
+  mutate(id = row_number()) %>% #add row number as id
   filter(Trade.Name != "") %>% #drops 7obs with missing trade name
   arrange(Inspection.Date) #sort by date
 
-#if the same shop has several inspections - keep only the newest
+#if the same shop has several inspections - keep only the first
 inspect_data = inspect_data %>%
   group_by(Trade.Name) %>% 
   summarise_all(funs(first)) %>% #<----- check here Warning message: funs() is soft deprecated as of dplyr 0.8.0
@@ -47,8 +48,8 @@ inspect_data = inspect_data %>%
 
 # finds all shop chains
 inspect_data_chains = inspect_data %>% 
-  dplyr::group_by(Owner.Name) %>%  #group by owner to see who owns more than one company
-  dplyr::summarise(count = n())
+  group_by(Owner.Name) %>%  #group by owner to see who owns more than one company
+  summarise(count = n())
 
 inspect_data_chains$chain[which(inspect_data_chains$count == 1)] = 0 #gives every owner the value 0 if only one shop owned
 inspect_data_chains$chain[which(inspect_data_chains$count >= 2)] = 1 #gives value 1 if > 1 shop owned
@@ -59,12 +60,14 @@ inspect_data = inspect_data %>%
 
 rm(inspect_data_chains)
 
+save(inspect_data, file = "./data/inspect_data.RData")
+
 #########################################################################################
 
-# Add Coordinates of shops
+# Add Coordinates of shops----
 #########################################################################################
 
-# Function extracts the coordinates as two vectors
+# Function extracts the coordinates as two vectors from Column 12
 coord <- function(string_vector){
   # splits character at "("
   string_vector <- strsplit(string_vector, "\\(")
@@ -86,7 +89,7 @@ coord <- function(string_vector){
   return(location)
 }
 
-# We replace location by Longitude and Latitude
+# replace location by Longitude and Latitude in the df
 inspect_data <- inspect_data %>%
   mutate(Longitude = coord(Location)[,1],
          Latitude = coord(Location)[,2]) %>%
@@ -103,13 +106,13 @@ inspect_data <- inspect_data %>%
   mutate(Address = str_c(Address, City, sep = " ")) %>%
   mutate(Address = str_c(Address, State.Code, sep = ", "))
 
-# use Google maps to get missing coordiantes (takes few minutes)
+# use Google maps to get missing coordiantes (takes few minutes an requires API in the head)
 inspect_data_na <- inspect_data %>%
-  filter(is.na(Latitude)) %>%
-  mutate_geocode(Address) %>%
+  filter(is.na(Latitude)) %>% # all missing coordinates
+  mutate_geocode(Address) %>% # applies Google Maps API
   mutate(Latitude = lat, Longitude = lon) %>%
   dplyr::select(-c(lat, lon)) %>%
-  filter(!is.na(Latitude)) # 248 still missing and are dropped
+  filter(!is.na(Latitude)) # 248 still missing and dropped
 
 # add new coordinates
 inspect_data <- inspect_data %>%
@@ -124,12 +127,13 @@ save(inspect_data, file = "./data/inspect_data.RData")
 
 #########################################################################################
 
-# Spatial Data
+# Spatial Data----
 #########################################################################################
 
 # Haversine Formula
+# (calculates the distance of two points on the earth surface)
 haversine <- function(lat1, lon1, lat2, lon2){
-  # to radians
+  # from coordinate (degree) to radians
   φ1 <- (lat1 * pi) / (180)
   φ2 <- (lat2 * pi) / (180)
   Δφ <- ((lat2 - lat1) * pi) / (180)
@@ -141,31 +145,37 @@ haversine <- function(lat1, lon1, lat2, lon2){
   return(d)
 }
 
-# gives me the n closest obs. to coordniates in df with rows latitude and longitude
+# the n closest obs. to coordniates in df with rows latitude and longitude
 n_closest <- function(df, n, lat, lon){
+  # distance to all points
   dist_vect <- haversine(lat, lon, as.matrix(df$Latitude), as.matrix(df$Longitude))
+  # n closest points
   dist_sort <- sort(dist_vect, decreasing = FALSE)[1:n]
+  # n closest obs.
   rows <- which(dist_vect %in% dist_sort)
   inspections_sub <- df[rows, ]
   return(inspections_sub)
 }
 
-# shop density and rating of closest shop
+# get shop density and rating of closest shop
 rating_closest_neighb <- c()
 shop_density <- c()
 for (i in 1:nrow(inspect_data)){
   lat = as.numeric(inspect_data$Latitude[i])
   lon = as.numeric(inspect_data$Longitude[i])
+  # all data except the i-th obs.
   inspect_data_sub <- inspect_data %>%
     slice(-i)
-  # get the density of shops in 1km distance
+  # distance to i-th obs.
   distances <- haversine(lat, lon, inspect_data_sub$Latitude, inspect_data_sub$Longitude)
+  # density of shops in 1km distance
   distances <- length(which(distances < 1000))
   shop_density <- c(shop_density, distances)
   # get the grade of the closest shop
   inspect_data_sub <- n_closest(inspect_data_sub, 1, lat, lon)
   inspect_grade <- inspect_data_sub$Inspection.Grade
-  inspect_grade <- round(mean(inspect_grade)) # rounded mean from multiple shops with same closest distance
+  # rounded mean from multiple shops with same closest distance
+  inspect_grade <- round(mean(inspect_grade))
   rating_closest_neighb <- c(rating_closest_neighb, inspect_grade)
 }
 
@@ -181,13 +191,20 @@ save(inspect_data, file = "./data/inspect_data.RData")
 
 # Add Google Ratings
 #########################################################################################
+
+# Load Google ratings from web scraping
 load("data/results_scraping_final")
 google_ratings <-  data
 google_ratings <- dplyr::select(google_ratings, -X)
 #google_ratings = google_ratings[complete.cases(google_ratings[,]),]
 #google_ratings$Reviews[which(google_ratings$Reviews!=0)] = 1
-inspect_data = inner_join(inspect_data, google_ratings, by = "Trade.Name")
 
+# Merge data with ratings via Trade.Name
+# (Trade.Name is by construction unique)
+inspect_data <-  inspect_data %>%
+  inner_join(google_ratings, by = "Trade.Name")
+
+# remove 
 inspect_data <- inspect_data %>%
   dplyr::select(-City.y) %>%
   rename(City = City.x) 
@@ -195,6 +212,7 @@ inspect_data <- inspect_data %>%
 rm(google_ratings, data)
 
 save(inspect_data, file = "./data/inspect_data.RData")
+
 #########################################################################################
 
 # Filter for New York City
