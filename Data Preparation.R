@@ -45,7 +45,7 @@ inspect_data = inspect_data %>%
 #if the same shop has several inspections - keep only the newest
 inspect_data = inspect_data %>%
   group_by(Trade.Name) %>% 
-  summarise_all(funs(first)) %>% #<----- check here Warning message: funs() is soft deprecated as of dplyr 0.8.0
+  summarise_all(.funs = first) %>% #<----- check here Warning message: funs() is soft deprecated as of dplyr 0.8.0
   ungroup
 
 # finds all shop chains
@@ -215,7 +215,7 @@ save(inspect_data, file = "./data/ny_inspect_data.RData")
 # Add Demographic Information
 #########################################################################################
 
-demographic_data <- read.csv("~/GitHub/DSF/data/inspectionsDem.cvs.gz")
+demographic_data <- read.csv("data/inspectionsDem.cvs.gz")
 length(unique(demographic_data$Address))
 demographic_data <- demographic_data %>% distinct(Address, .keep_all = TRUE)
 ny_inspect_data <- unite(ny_inspect_data, Address , c(Street, City, State.Code, Zip.Code), sep = ", ", remove = FALSE)
