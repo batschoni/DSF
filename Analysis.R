@@ -32,7 +32,19 @@ ny_data <- ny_inspect_data %>%
                   neighbourhood_group,
                   Numb_Rooms,
                   Avr_Price,
-                  subway_distance))
+                  subway_distance,
+                  TotalPop.per.CenTrac,
+                  Men.per.CenTrac,
+                  White.per.CenTrac,
+                  IncomePerCap.per.CenTrac,
+                  Poverty.per.CenTrac,
+                  Professional.per.CenTrac,
+                  Service.per.CenTrac,
+                  Office.per.CenTrac,
+                  Construction.per.CenTrac,
+                  Production.per.CenTrac,
+                  Transit.per.CenTrac,
+                  Unemployment.per.CenTrac))
 
 # change the variable from factor to numeric for KNN and Boosting
 ny_data <- ny_data %>%
