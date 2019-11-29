@@ -13,7 +13,7 @@ load("./data/ny_inspect_data.RData")
 set.seed(123)
 
 data <- inspect_data %>%
-  mutate(Inspection.Grade = factor(Inspection.Grade, levels = c(3, 2, 1), labels = c("A", "B", "C"))) %>%
+  mutate(Inspection.Grade = factor(Inspection.Grade, levels = c(1, 2, 3), labels = c("A", "B", "C"))) %>%
   dplyr::select(c(Inspection.Grade, 
                   shop_density,
                   rating_closest_neighb,
@@ -22,7 +22,7 @@ data <- inspect_data %>%
                   Number_of_Reviews))
 
 ny_data <- ny_inspect_data %>%
-  mutate(Inspection.Grade = factor(Inspection.Grade, levels = c(3, 2, 1), labels = c("A", "B", "C"))) %>%
+  mutate(Inspection.Grade = factor(Inspection.Grade, levels = c(1, 2, 3), labels = c("A", "B", "C"))) %>%
   dplyr::select(c(Inspection.Grade, 
                   shop_density,
                   rating_closest_neighb,

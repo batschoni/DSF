@@ -1,36 +1,37 @@
+
+# Header----
+#########################################################################################
+
 # Install required packages
 # install.packages("ggmap")
 # install.packages("raster")
 # install.packages("rgdal")
+# install.packages("gridExtra")
 
 library(tidyverse)
 library(ggmap) # to get coordinates from a address
-register_google(key = "") # the service is free but requires email registration
-<<<<<<< HEAD
-library("sp") # Library for spatial data
-library("raster") # Library for spatial data
-=======
-# Library for spatial data
-library(sp)
-library(raster)
->>>>>>> 27bd7cd1fbaba01949d12d54ea3938ae86dc3d86
+library(ggplot2)
+library(gridExtra) # to create panle plots
+register_google(key = "") # the service is free but requires email registration and a API
 library(rgdal)
 
+#########################################################################################
 
-# downlaod and first cleaning of inspection data
+# downlaod and first cleaning of inspection data----
 #########################################################################################
 
 # Initially download and save the file
 #inspect_data <- read.csv("https://data.ny.gov/api/views/d6dy-3h7r/rows.csv?accessType=DOWNLOAD", stringsAsFactors = FALSE)
 #save(inspect_data, file = "./data/inspect_data_original.RData")
 
-# Load the original file previously downloaded
+# Load original file previously downloaded
 load("./data/inspect_data_original.RData")
 
 inspect_data <- as_tibble(inspect_data)
 
 # Inspection grade as numbers
-mapping <- c("A" = 3, "B" = 2, "C" = 1)
+# Required because we calculate averages later on which is not possible with Factors
+mapping <- c("A" = 1, "B" = 2, "C" = 3)
 inspect_data <- inspect_data %>%
   mutate(Inspection.Grade = mapping[Inspection.Grade])
 
@@ -38,39 +39,37 @@ rm(mapping)
 
 inspect_data = inspect_data %>% 
   mutate(Inspection.Date = as.Date(Inspection.Date, format = "%m/%d/%Y")) %>% #convert values to dates for calculation
-<<<<<<< HEAD
-  dplyr::mutate(id = row_number()) %>% #add row number as id
-=======
->>>>>>> 21229189ed099b9b7abbcbfbc9cf6ce66b82e734
   filter(Trade.Name != "") %>% #drops 7obs with missing trade name
   arrange(Inspection.Date) #sort by date
 
-#if the same shop has several inspections - keep only the newest
+#if the same shop has several inspections - keep only the first
 inspect_data = inspect_data %>%
   group_by(Trade.Name) %>% 
-  summarise_all(.funs = first) %>% #<----- check here Warning message: funs() is soft deprecated as of dplyr 0.8.0
+  summarise_all(funs(first)) %>% #<----- check here Warning message: funs() is soft deprecated as of dplyr 0.8.0
   ungroup
 
 # finds all shop chains
 inspect_data_chains = inspect_data %>% 
-  dplyr::group_by(Owner.Name) %>%  #group by owner to see who owns more than one company
-  dplyr::summarise(count = n())
+  group_by(Owner.Name) %>%  #group by owner to see who owns more than one company
+  summarise(count = n())
 
 inspect_data_chains$chain[which(inspect_data_chains$count == 1)] = 0 #gives every owner the value 0 if only one shop owned
 inspect_data_chains$chain[which(inspect_data_chains$count >= 2)] = 1 #gives value 1 if > 1 shop owned
-inspect_data_chains = as.factor(inspect_data_chains)
+
 #merges the data
 inspect_data = inspect_data %>%
   inner_join(inspect_data_chains, by = "Owner.Name")
 
 rm(inspect_data_chains)
 
+save(inspect_data, file = "./data/inspect_data.RData")
+
 #########################################################################################
 
-# Add Coordinates of shops
+# Add Coordinates of shops----
 #########################################################################################
 
-# Function extracts the coordinates as two vectors
+# Function extracts the coordinates as two vectors from Column 12
 coord <- function(string_vector){
   # splits character at "("
   string_vector <- strsplit(string_vector, "\\(")
@@ -92,7 +91,7 @@ coord <- function(string_vector){
   return(location)
 }
 
-# We replace location by Longitude and Latitude
+# replace location by Longitude and Latitude in the df
 inspect_data <- inspect_data %>%
   mutate(Longitude = coord(Location)[,1],
          Latitude = coord(Location)[,2]) %>%
@@ -109,13 +108,13 @@ inspect_data <- inspect_data %>%
   mutate(Address = str_c(Address, City, sep = " ")) %>%
   mutate(Address = str_c(Address, State.Code, sep = ", "))
 
-# use Google maps to get missing coordiantes (takes few minutes)
+# use Google maps to get missing coordiantes (takes few minutes an requires API in the head)
 inspect_data_na <- inspect_data %>%
-  filter(is.na(Latitude)) %>%
-  mutate_geocode(Address) %>%
+  filter(is.na(Latitude)) %>% # all missing coordinates
+  mutate_geocode(Address) %>% # applies Google Maps API
   mutate(Latitude = lat, Longitude = lon) %>%
   dplyr::select(-c(lat, lon)) %>%
-  filter(!is.na(Latitude)) # 248 still missing and are dropped
+  filter(!is.na(Latitude)) # 248 still missing and dropped
 
 # add new coordinates
 inspect_data <- inspect_data %>%
@@ -130,13 +129,13 @@ save(inspect_data, file = "./data/inspect_data.RData")
 
 #########################################################################################
 
-# Spatial Data
+# Spatial Data----
 #########################################################################################
 
 # Haversine Formula
+# (calculates the distance of two points on the earth surface)
 haversine <- function(lat1, lon1, lat2, lon2){
-  # to radians
-  browser()
+  # from coordinate (degree) to radians
   φ1 <- (lat1 * pi) / (180)
   φ2 <- (lat2 * pi) / (180)
   Δφ <- ((lat2 - lat1) * pi) / (180)
@@ -148,31 +147,37 @@ haversine <- function(lat1, lon1, lat2, lon2){
   return(d)
 }
 
-# gives me the n closest obs. to coordniates in df with rows latitude and longitude
+# the n closest obs. to coordniates in df with rows latitude and longitude
 n_closest <- function(df, n, lat, lon){
+  # distance to all points
   dist_vect <- haversine(lat, lon, as.matrix(df$Latitude), as.matrix(df$Longitude))
+  # n closest points
   dist_sort <- sort(dist_vect, decreasing = FALSE)[1:n]
+  # n closest obs.
   rows <- which(dist_vect %in% dist_sort)
   inspections_sub <- df[rows, ]
   return(inspections_sub)
 }
 
-# shop density and rating of closest shop
+# get shop density and rating of closest shop
 rating_closest_neighb <- c()
 shop_density <- c()
 for (i in 1:nrow(inspect_data)){
   lat = as.numeric(inspect_data$Latitude[i])
   lon = as.numeric(inspect_data$Longitude[i])
+  # all data except the i-th obs.
   inspect_data_sub <- inspect_data %>%
     slice(-i)
-  # get the density of shops in 1km distance
+  # distance to i-th obs.
   distances <- haversine(lat, lon, inspect_data_sub$Latitude, inspect_data_sub$Longitude)
+  # density of shops in 1km distance
   distances <- length(which(distances < 1000))
   shop_density <- c(shop_density, distances)
   # get the grade of the closest shop
   inspect_data_sub <- n_closest(inspect_data_sub, 1, lat, lon)
   inspect_grade <- inspect_data_sub$Inspection.Grade
-  inspect_grade <- round(mean(inspect_grade)) # rounded mean from multiple shops with same closest distance
+  # rounded mean from multiple shops with same closest distance
+  inspect_grade <- round(mean(inspect_grade))
   rating_closest_neighb <- c(rating_closest_neighb, inspect_grade)
 }
 
@@ -188,15 +193,10 @@ save(inspect_data, file = "./data/inspect_data.RData")
 
 # Add Google Ratings----
 #########################################################################################
+
+# Load Google ratings from web scraping
 load("data/results_scraping_final")
 google_ratings <-  data
-<<<<<<< HEAD
-google_ratings <- dplyr::select(google_ratings, -X)
-#google_ratings = google_ratings[complete.cases(google_ratings[,]),]
-#google_ratings$Reviews[which(google_ratings$Reviews!=0)] = 1
-inspect_data = inner_join(inspect_data, google_ratings, by = "Trade.Name")
-
-=======
 google_ratings <- google_ratings %>%
   dplyr::select(-X)
 
@@ -206,7 +206,6 @@ inspect_data <-  inspect_data %>%
   inner_join(google_ratings, by = "Trade.Name")
 
 # remove unneeded columns
->>>>>>> 21229189ed099b9b7abbcbfbc9cf6ce66b82e734
 inspect_data <- inspect_data %>%
   dplyr::select(-City.y) %>%
   rename(City = City.x) 
@@ -214,6 +213,7 @@ inspect_data <- inspect_data %>%
 rm(google_ratings, data)
 
 save(inspect_data, file = "./data/inspect_data.RData")
+
 #########################################################################################
 
 # Filter for New York City----
@@ -228,24 +228,22 @@ ny_counties <-  c("New York", "Kings", "Bronx", "Richmond", "Queens") # NYC coun
 ny_inspect_data <- inspect_data[which(inspect_data$County %in% ny_counties),]
 rm(ny_counties)
 
-<<<<<<< HEAD
-save(inspect_data, file = "./data/ny_inspect_data.RData")
-=======
 save(ny_inspect_data, file = "./data/ny_inspect_data.RData")
 
->>>>>>> 21229189ed099b9b7abbcbfbc9cf6ce66b82e734
 #########################################################################################
 
 # Add Demographic Information----
 #########################################################################################
 
-demographic_data <- read.csv("data/inspectionsDem.cvs.gz")
+demographic_data <- read.csv("./data/inspectionsDem.cvs.gz")
 length(unique(demographic_data$Address))
 demographic_data <- demographic_data %>% distinct(Address, .keep_all = TRUE)
+names(demographic_data)
+demographic_data <- demographic_data[!(names(demographic_data) %in% c("County", "Inspection.Grade" , "Inspection.Date", "Owner.Name" , "Trade.Name", "Street", "City", "State.Code", "Zip.Code","Deficiency.Number","Deficiency.Description"))]
 ny_inspect_data <- unite(ny_inspect_data, Address , c(Street, City, State.Code, Zip.Code), sep = ", ", remove = FALSE)
 ny_inspect_dem <- merge(ny_inspect_data, demographic_data, by = "Address")
 ny_inspect_data <- ny_inspect_dem
-
+names(ny_inspect_dem)
 
 #########################################################################################
 
@@ -287,11 +285,8 @@ ny_inspect_data = inner_join(ny_inspect_data, data_bnb, by = "Zip.Code")
 
 rm(Coordinates, data_bnb, pts, s, summary, zip_where, latitude, longitude)
 
-<<<<<<< HEAD
-=======
 save(ny_inspect_data, file = "./data/ny_inspect_data.RData")
 
->>>>>>> 21229189ed099b9b7abbcbfbc9cf6ce66b82e734
 #########################################################################################
 
 # NYC Subway locations----
@@ -315,15 +310,10 @@ subway_data <- subway_data %>%
 # Distances in meter to next subway station
 subway_distance <- c()
 for (i in 1:nrow(ny_inspect_data)){
-<<<<<<< HEAD
-  lat <-  as.numeric(ny_inspect_data$Latitude[125])
-  lon <-  as.numeric(ny_inspect_data$Longitude[125])
-=======
   # coordinates of i-th obs.
   lat <-  as.numeric(ny_inspect_data$Latitude[i])
   lon <-  as.numeric(ny_inspect_data$Longitude[i])
   # distance of i-th point to all subway stations
->>>>>>> 21229189ed099b9b7abbcbfbc9cf6ce66b82e734
   distances <- haversine(lat, lon, subway_data$Latitude, subway_data$Longitude)
   # shortest distance
   distances <- min(distances)
@@ -333,7 +323,8 @@ for (i in 1:nrow(ny_inspect_data)){
 ny_inspect_data <- ny_inspect_data %>%
   mutate(subway_distance = subway_distance)
 
-rm(i, lat, lon, subway_data, haversine, subway_distance, distances)
+rm(i, lat, lon, haversine, subway_distance, distances)
+
 save(ny_inspect_data, file = "./data/ny_inspect_data.RData")
 
 #########################################################################################
@@ -359,16 +350,19 @@ map_nyc <- get_stamenmap(bbox = c(left = -74.2000, bottom = 40.5500, right = -73
 
 
 Plot1a <- ggmap(map_ny_state) +
-  geom_point(aes(x = Longitude, y = Latitude, color=factor(Inspection.Grade)), data = ny_inspect_data, size = 0.6) +
+  geom_point(aes(x = Longitude, y = Latitude, color=factor(Inspection.Grade)), data = inspect_data, size = 0.6) +
   theme(legend.position = "none")
 
 Plot1b <- ggmap(map_nyc) +
   geom_point(aes(x = Longitude, y = Latitude, color=factor(Inspection.Grade)), data = ny_inspect_data, size = 0.6) +
-  labs(fill = "Rating")
+  scale_color_manual(labels = c("A", "B", "C"), values = c("blue", "red", "green")) +
+  labs(color = "Rating")
 
-Plot1 <- grid.arrange(plot1, plot2, ncol=2)
+Plot1 <- grid.arrange(Plot1a, Plot1b, ncol=2)
 
-# Save Plot2
-ggsave("./plots/Plot2_Map.eps", plot = Plot2)
+# Save Plot1
+ggsave("./plots/Plot1_Map.png", plot = Plot1a)
+ggsave("./plots/Plot2_Map.png", plot = Plot1b)
 
+rm(subway_data)
 #########################################################################################
