@@ -48,8 +48,6 @@ rm(ny_inspect_data, inspect_data)
 
 # First descriptive plots----
 #########################################################################################
-#install.packages("ggthemes")
-library(ggthemes)
 
 ggplot(data = ny_data, aes(x=Inspection.Grade)) +
   geom_histogram(stat = "count", fill = "lightgrey") +
