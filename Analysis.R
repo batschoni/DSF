@@ -34,7 +34,9 @@ ny_data <- ny_inspect_data %>%
                    County.per.CenTrac, 
                    State.per.County, 
                    neighbourhood_group, 
-                   Pacific.per.County))
+                   Pacific.per.County,
+                   Latitude,
+                   Longitude))
 
 # For computation restriction, we need to limit our analysis to the most important covariates
 # Therfore, we take the 20 variables with the highest correlation to Inspection Grade.
