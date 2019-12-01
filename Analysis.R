@@ -6,56 +6,57 @@ library(class) # For KNN
 # Tranformation before analysis----
 #########################################################################################
 
+set.seed(123)
+
 # Load data for entire state
 load("./data/inspect_data.RData")
 # Load data for NYC
 load("./data/ny_inspect_data.RData")
 
-set.seed(123)
+# ensure that no variables contain NA
+colSums(is.na(ny_inspect_data))
 
-data <- inspect_data %>%
-  mutate(Inspection.Grade = factor(Inspection.Grade, levels = c(1, 2, 3), labels = c("A", "B", "C"))) %>%
-  dplyr::select(c(Inspection.Grade, 
-                  shop_density,
-                  rating_closest_neighb,
-                  chain,
-                  count,
-                  Number_of_Reviews))
-
+# Remove everything except the covariates
 ny_data <- ny_inspect_data %>%
+  dplyr::select(-c(Address,
+                   Trade.Name, 
+                   County, 
+                   Inspection.Date, 
+                   Owner.Name, 
+                   Street, 
+                   City, 
+                   State.Code, 
+                   Zip.Code, 
+                   Deficiency.Number, 
+                   Deficiency.Description, 
+                   X, 
+                   TractId, 
+                   Location, 
+                   State.per.CenTrac, 
+                   County.per.CenTrac, 
+                   State.per.County, 
+                   neighbourhood_group, 
+                   Pacific.per.County))
+
+# Correlation in aboslute term to Inspetion Grade
+res <- abs(cor(ny_data))[,1]
+res <- as.data.frame(res)
+# 21 largest correlation (inclusive Inspection Grade to itself)
+largest_corr <- sort(res[,1], decreasing = TRUE)[1:21]
+covariates <- rownames(res)
+# 20 variables with the larges correlation to inspection grade
+covariates <- covariates[which(res[,1] %in% largest_corr)]
+
+# Select 20 best covariates
+ny_data <- ny_data %>%
   mutate(Inspection.Grade = factor(Inspection.Grade, levels = c(1, 2, 3), labels = c("A", "B", "C"))) %>%
-  dplyr::select(c(Inspection.Grade, 
-                  shop_density,
-                  rating_closest_neighb,
-                  chain,
-                  count,
-                  Number_of_Reviews,
-                  neighbourhood_group,
-                  Numb_Rooms,
-                  Avr_Price,
-                  subway_distance,
-                  TotalPop.per.CenTrac,
-                  Men.per.CenTrac,
-                  White.per.CenTrac,
-                  IncomePerCap.per.CenTrac,
-                  Poverty.per.CenTrac,
-                  Professional.per.CenTrac,
-                  Service.per.CenTrac,
-                  Office.per.CenTrac,
-                  Construction.per.CenTrac,
-                  Production.per.CenTrac,
-                  Transit.per.CenTrac,
-                  Unemployment.per.CenTrac))
+  dplyr::select(covariates)
 
 # change the variable from factor to numeric for KNN and Boosting
 ny_data <- ny_data %>%
   mutate(neighbourhood_group = as.numeric(neighbourhood_group))
 
-table(is.na(ny_data$Number_of_Reviews))
-
-rm(ny_inspect_data, inspect_data)
-
-# NA check
+rm(ny_inspect_data)
 
 #########################################################################################
 
@@ -196,7 +197,7 @@ over_under_bagging <- function(df, Y, B, sample_size, FUN){
     nam <- paste("subset", classes[i], sep = "")
     assign(nam, df[which(as.matrix(df[Y])== classes[i]), ])
   }
-  CV_err = matrix(data = NA, nrow = 2^(ncol(df) - 1) - 1, ncol = B)
+  Bag_err = matrix(data = NA, nrow = ncol(df) - 1, ncol = B)
   for(i in 1:B){
     sampleA <- sample(1:nrow(subsetA), sample_size[1], replace = T)
     sampleB <- sample(1:nrow(subsetB), sample_size[2], replace = T)
@@ -254,11 +255,14 @@ length(pred)
 ###
 
 # implement LDA with under-bagging
+start_time <- Sys.time()
 lda_under_bagging_error <- over_under_bagging(ny_data,
                                               Y = "Inspection.Grade",
-                                              B = 10,
+                                              B = 1,
                                               sample_size = c(700, 700, 700),
                                               FUN = lda)
+end_time <- Sys.time()
+end_time - start_time
 # implement LDA with over-bagging
 lda_over_bagging_error <- over_under_bagging(ny_data,
                                              Y = "Inspection.Grade",
@@ -392,7 +396,7 @@ rm(g, grid_data, r, lda_pred, resolution, xs, ys, dec_border, zs)
 # implement QDA with under-bagging
 qda_under_bagging_error <- over_under_bagging(ny_data,
                                               Y = "Inspection.Grade",
-                                              B = 10,
+                                              B = 1,
                                               sample_size = c(700, 700, 700),
                                               FUN = qda)
 # implement QDA with over-bagging

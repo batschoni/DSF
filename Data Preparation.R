@@ -14,6 +14,7 @@ library(ggplot2)
 library(gridExtra) # to create panle plots
 register_google(key = "") # the service is free but requires email registration and a API
 library(rgdal)
+library(dplyr)
 
 #########################################################################################
 
@@ -51,7 +52,7 @@ inspect_data = inspect_data %>%
 # finds all shop chains
 inspect_data_chains = inspect_data %>% 
   group_by(Owner.Name) %>%  #group by owner to see who owns more than one company
-  summarise(count = n())
+  dplyr::summarise(count = n())
 
 inspect_data_chains$chain[which(inspect_data_chains$count == 1)] = 0 #gives every owner the value 0 if only one shop owned
 inspect_data_chains$chain[which(inspect_data_chains$count >= 2)] = 1 #gives value 1 if > 1 shop owned
@@ -207,8 +208,8 @@ inspect_data <-  inspect_data %>%
 
 # remove unneeded columns
 inspect_data <- inspect_data %>%
-  dplyr::select(-City.y) %>%
-  rename(City = City.x) 
+  dplyr::rename(City = City.x)  %>%
+  dplyr::select(-City.y)
 
 rm(google_ratings, data)
 
@@ -247,6 +248,8 @@ ny_inspect_data <- ny_inspect_dem
 
 rm(ny_inspect_dem, demographic_data)
 
+save(ny_inspect_data, file = "./data/ny_inspect_data.RData")
+
 #########################################################################################
 
 # Add Airbnb Data----
@@ -273,7 +276,7 @@ data_bnb = data_bnb %>%
 
 summary = data_bnb %>% 
   group_by(ZIP) %>% 
-  summarise(count = n(), mean = mean(price))
+  dplyr::summarise(count = n(), mean = mean(price))
 
 data_bnb = inner_join(data_bnb, summary, by = "ZIP")
 data_bnb$ZIP = as.numeric(data_bnb$ZIP)
@@ -281,7 +284,7 @@ data_bnb$ZIP = as.numeric(data_bnb$ZIP)
 data_bnb = data_bnb %>% 
   distinct(ZIP, .keep_all = TRUE) %>% 
   dplyr::select(-price) %>% 
-  rename(Zip.Code = ZIP, Numb_Rooms = count, Avr_Price = mean)
+  dplyr::rename(Zip.Code = ZIP, Numb_Rooms = count, Avr_Price = mean)
 
 ny_inspect_data = inner_join(ny_inspect_data, data_bnb, by = "Zip.Code")
 
@@ -306,7 +309,7 @@ subway_data <- as_tibble(subway_data)
 # Keep only unique stations
 subway_data <- subway_data %>%
   distinct(Station.Name, .keep_all = TRUE) %>%
-  rename(Latitude = Station.Latitude,
+  dplyr::rename(Latitude = Station.Latitude,
          Longitude = Station.Longitude)
 
 # Distances in meter to next subway station
