@@ -10,6 +10,7 @@ library(ggthemes)
 library(corrplot)
 library(MASS)
 library(glmnet)
+library(magrittr)
 
 ## Data Preparation
 
@@ -137,10 +138,22 @@ mean(polr.pred != tDa[-train_tDa,])
 #####################################
 #Logistical Regression with Lasso
 ################################
+
 # Lasso Issue vs. No Issue
 
-x_var <- model.matrix(Inspection.Grade~. , tDa)[,-1]
-y_var <- tDa$Inspection.Grade
+x_var <- model.matrix(Inspection.Grade~. , tDa[train_tDa,])[,-1]
+y_var <- ifelse(tDa[train_tDa, "Inspection.Grade"] == "Issue", 1, 0)
 
-cv.lasso <- cv.glmnet(x_var[train_tDa,], y_var[train_tDa,], alpha = 1, family = "binomial", data = tDa, subset = train_tDa)
+cv.lasso <- cv.glmnet(x_var, y_var, alpha = 1, family = "binomial", lambda = NULL)
+lasso <- glmnet(x_var, y_var, alpha = 1, family = "binomial", lambda = cv.lasso$lambda.min)
+coef(lasso)
+
+x_test <- model.matrix(Inspection.Grade~. , tDa[-(train_tDa),])[,-1]
+lasso.probabilities <- lasso %>% predict(newx = x_test)
+lasso.predicted.classes <- ifelse(lasso.probabilities > 0.5, "Issue", "No Issue")
+
+#Accuracy of model
+observed.classes <- tDa[-(train_tDa), "Inspection.Grade"]
+mean(predicted.classes == observed.classes)
+
 
