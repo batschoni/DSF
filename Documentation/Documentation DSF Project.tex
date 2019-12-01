@@ -53,6 +53,16 @@ A brief analysis of the dataset revealed the incompleteness of the ratings. Appr
 
 In order to acquire additional data and parameters on the location of the shops, we integrated data from Airbnb (average price and number of rooms). To join the original and the airbnb data frames a matching key is needed. Regarding the dataset only longitude and latitude were available. Therefore we used the above mentioned spatial data to assign the respective parameter to the ZIP codes in New York. Thereafter we grouped the data by ZIP code, calculated the respective means and counts and added it to the new tibble.
 
+<<<<<<< HEAD
+=======
+\chapter{Data Analysis}
+
+\section{The Imbalance Issue}
+Closer scrutiny of Figure~\ref{map1} sheds light on the extremely imbalanced distribution of the original data. In fact, the rating A contributes to XX\% on state level while B and C are only represented to XX\% and XX\% respectively. This differences in the occurrence has a large impact on the prediction capabilities of a model.
+
+City level, in turn, shows a more balanced distribution among the three classes. This is an other reason apart from the availability of covariates why chose to limit our analysis on New York City data.
+
+>>>>>>> e37cd049b6be20e532e5b02bad3fccb91179af5b
 \chapter{Conclusion}
 --> Wrong predictors
 

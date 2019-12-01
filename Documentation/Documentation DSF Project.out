@@ -3,6 +3,12 @@
 \BOOKMARK [1][-]{section.1.2}{Chain Information}{chapter.1}% 3
 \BOOKMARK [1][-]{section.1.3}{Spatial Data}{chapter.1}% 4
 \BOOKMARK [1][-]{section.1.4}{Subway Data}{chapter.1}% 5
+<<<<<<< HEAD
 \BOOKMARK [1][-]{section.1.5}{Google Web Scraper}{chapter.1}% 6
 \BOOKMARK [1][-]{section.1.6}{Airbnb Data}{chapter.1}% 7
 \BOOKMARK [0][-]{chapter.2}{Conclusion}{}% 8
+=======
+\BOOKMARK [0][-]{chapter.2}{Data Analysis}{}% 6
+\BOOKMARK [1][-]{section.2.1}{The Imbalance Issue}{chapter.2}% 7
+\BOOKMARK [0][-]{chapter.3}{Conclusion}{}% 8
+>>>>>>> e37cd049b6be20e532e5b02bad3fccb91179af5b
