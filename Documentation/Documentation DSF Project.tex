@@ -42,7 +42,14 @@ where $\alpha_{i}$ are latitudes, $\lambda_{i}$ are longitudes, $R$ is the earth
 In a next step, we amend our New York City inspection data with location information of subway stations. We use again \href{https://data.ny.gov/Transportation/NYC-Transit-Subway-Entrance-And-Exit-Data/i9wp-a4ja}{an official dataset provided by the State of New York}. The dataset contains the location of every subway entrance and its corresponding station. We are only interested in the station. Therefore, we remove all duplicates of stations with multiple entrances and then use again the Haversine Formula to find the distance of the closest station to every shop.
 
 
-\Chapter{Conclusion}
+\chapter{Data Analysis}
+
+\section{The Imbalance Issue}
+Closer scrutiny of Figure~\ref{map1} sheds light on the extremely imbalanced distribution of the original data. In fact, the rating A contributes to XX\% on state level while B and C are only represented to XX\% and XX\% respectively. This differences in the occurrence has a large impact on the prediction capabilities of a model.
+
+City level, in turn, shows a more balanced distribution among the three classes. This is an other reason apart from the availability of covariates why chose to limit our analysis on New York City data.
+
+\chapter{Conclusion}
 --> Wrong predictors
 
 \end{document}

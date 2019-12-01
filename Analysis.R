@@ -81,7 +81,6 @@ ggplot(data = ny_data, aes(x=Inspection.Grade)) +
 
 
 forward_stepwise_selection <- function(df, Y, FUN, K = 10){
-  browser()
   # All covariate names
   covariates <- colnames(df)
   covariates <- covariates[which(covariates != Y)]
@@ -131,12 +130,8 @@ forward_stepwise_selection <- function(df, Y, FUN, K = 10){
     # Error of best prediction
     model_errors[(i+1), 2] <- min(cross_val_err)
   }
+  return(model_errors)
 }
-
-forward_stepwise_selection(ny_data, "Inspection.Grade", lda)
-paste( "Inspection.Grade", '~', "test")
-test <- lda(Inspection.Grade ~ count, data = ny_data)
-predict(test, newdata = ny_data)$class
 
 best_subset_selection <- function(df_train, df_test, Y, FUN){
   # all covariates
@@ -207,11 +202,11 @@ over_under_bagging <- function(df, Y, B, sample_size, FUN){
     sampleB <- sample(1:nrow(subsetB), sample_size[2], replace = T)
     sampleC <- sample(1:nrow(subsetC), sample_size[3], replace = T)
     bagging_data <- rbind(subsetA[sampleA, ], subsetB[sampleB, ], subsetC[sampleC, ])
-    err <- k_fold_CV(bagging_data, Y, 10, FUN)
-    CV_err[,i] <- as.matrix(err[, 1])
+    err <- forward_stepwise_selection(bagging_data, Y, FUN)
+    Bag_err[,i] <- as.matrix(err[, 1])
   }
-  CV_err_final <- as.tibble(apply(CV_err, 1, mean, na.rm=TRUE))
-  CV_err_final <- cbind(rownames(err), CV_err_final)
+  Bag_err_final <- as.tibble(apply(Bag_err, 1, mean, na.rm=TRUE))
+  Bag_err_final <- cbind(1:(length(df)-1), CV_err_final)
   #oob_err_final <- as.matrix(apply(oob_err, 1, mean, na.rm=TRUE))
   #rownames(oob_err_final) <-  rownames(err)
   return(CV_err_final)
@@ -261,7 +256,7 @@ length(pred)
 # implement LDA with under-bagging
 lda_under_bagging_error <- over_under_bagging(ny_data,
                                               Y = "Inspection.Grade",
-                                              B = 2,
+                                              B = 10,
                                               sample_size = c(700, 700, 700),
                                               FUN = lda)
 # implement LDA with over-bagging
@@ -510,6 +505,61 @@ rm(g, grid_data, r, lda_pred, resolution, xs, ys, dec_border, zs)
 #########################################################################################
 
 # Slightly adjust the function to KNN
+
+forward_stepwise_selection <- function(df, Y, FUN, K = 10){
+  # All covariate names
+  covariates <- colnames(df)
+  covariates <- covariates[which(covariates != Y)]
+  # number of covaraies
+  p <- length(covariates)
+  # Matrix to store errors
+  model_errors <- matrix(data = c(1:p, rep(NA, p)), nrow = p, ncol = 2)
+  # select first covariate randomly
+  model_covariates <- c()
+  for(i in 0:(p-1)){
+    # Not yet used covariates
+    not_model_covariates <- covariates[which(!(covariates %in% model_covariates))]
+    # identity matrix to select each variable once
+    select_covaraite <- .col(c((p-i), (p-i))) == .row(c((p-i), (p-i)))
+    # formula for model estimate
+    allModelsList <- apply(select_covaraite, 1, function(x)
+      paste(c(model_covariates, not_model_covariates[x]),
+            collapse= " + "))
+    #allModelsList <- as.matrix(allModelsList)
+    allModelsList <- lapply(allModelsList, function(x)
+      as.formula(paste(c(Y, x), collapse = " ~ ")))
+    # >>>> CV
+    # Implement cross validation
+    fold <- round(nrow(df) / K)
+    cross_val_err = matrix(data = NA, nrow = length(not_model_covariates), ncol = K)
+    for(j in 1:K){
+      train_data <- df[-c((1+(j-1)*fold):(j*fold)),]
+      testing_data <- df[(1+(j-1)*fold):(j*fold),]
+      # Fit models
+      model_fit <- lapply(allModelsList, function(x) FUN(x, data=train_data))
+      # Predict
+      model_pred <-  transpose(ldply(model_fit, function(x) predict(x, newdata=testing_data)$class))
+      # Each column = Prediction results for one variable used
+      model_pred <- data.frame(matrix(unlist(model_pred), ncol=length(model_pred), byrow=F))
+      colnames(model_pred) <- not_model_covariates
+      # Prediction Error (Rate of Wrong Predictions)
+      pred_error <- apply(model_pred, 2, function(x) x != as.numeric(testing_data[, Y]))
+      pred_error <- as.data.frame(
+        apply(pred_error, 2, function(x) (nrow(testing_data)-sum(x, na.rm = TRUE))/nrow(testing_data)))
+      cross_val_err[,j] <- pred_error[, 1]
+    }
+    # Average of CV prediction error
+    cross_val_err <- as.tibble(apply(cross_val_err, 1, mean, na.rm=TRUE))
+    # Best prediction (takes the first one if equal performance)
+    best_covariate <- not_model_covariates[which(cross_val_err == min(cross_val_err))[1]]
+    model_covariates <- c(model_covariates, best_covariate)
+    # Error of best prediction
+    model_errors[(i+1), 2] <- min(cross_val_err)
+  }
+  return(model_errors)
+}
+
+
 model_selection_KNN <- function(df_train, df_test, Y, K){
   # all covariates
   col_names <- colnames(df_train)
