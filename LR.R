@@ -1,8 +1,8 @@
 #LR(nL)
-remove.packages("ggplot2") # Unisntall ggplot
-install.packages("ggplot2") # Install it again
+#remove.packages("ggplot2") # Unisntall ggplot
+#install.packages("ggplot2") # Install it again
+#install.packages("ggthemes")
 library(ggplot2)
-install.packages("ggthemes")
 library(MASS)
 library(ISLR)
 library(class)
@@ -140,7 +140,7 @@ mean(polr.pred != tDa[-train_tDa,])
 # Lasso Issue vs. No Issue
 
 x_var <- model.matrix(Inspection.Grade~. , tDa)[,-1]
-y_var <- swiss$Fertility
+y_var <- tDa$Inspection.Grade
 
-lasso <- cv.glmnet(x_var[train_tDa,], y_var[train_tDa,], alpha = 1, family = "binomial", data = tDa, subset = train_tDa)
+cv.lasso <- cv.glmnet(x_var[train_tDa,], y_var[train_tDa,], alpha = 1, family = "binomial", data = tDa, subset = train_tDa)
 
