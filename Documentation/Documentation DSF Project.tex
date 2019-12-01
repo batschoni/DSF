@@ -38,7 +38,7 @@ Some of the predictors rely on geolocation data. The cleaned inspection dataset 
        \includegraphics[width=0.5\textwidth]{Plots/Plot2_Map.png}
      }
 \end{figure}
-With complete spatial information, we now compute the two variables "shops density in 1km radius" as well as "rating of the closest neighbor". To get the distances of coordinates in meters, we apply the Haversine Formula\footnote{The Haversine Formula has its roots in spherical trigonometry and calculates the geodesic distance -- the shortest path between two points on a curved surface of a sphere, like the Earth. It needs to be mentioned that Haversine Formula does not take into account changes in altitude. However, it provides sufficient accuracy for the scope of this project.}
+With complete spatial information, we now compute the two variables "shops density in 1km radius" as well as "rating of the closest neighbor". To get the distances of coordinates in meters, we apply the Haversine Formula\footnote{The Haversine Formula has its roots in spherical trigonometry and calculates the geodesic distance -- the shortest path between two points on a curved surface of a sphere, like the Earth. It needs to be mentioned that Haversine Formula does not take into account changes in altitude \citep[pp. 157 - 160]{haversine}. However, it provides sufficient accuracy for the scope of this project.}
 \begin{equation} a = \sin^{2}(\frac{\Delta\alpha}{2}) + \cos(\alpha_{1})\cos(\alpha_{2})\sin^{2}(\frac{\Delta\lambda}{2})  \end{equation}
 \begin{equation} d = R \left( 2 \atantwo (\sqrt{a}, \sqrt{1-a} )  \right) \end{equation}
 where $\alpha_{i}$ are latitudes, $\lambda_{i}$ are longitudes, $R$ is the earth's radius ($6371\times10^{3}m$).
@@ -68,13 +68,26 @@ If the two classes are perfectly equally represented, the prior probabilities ar
 \begin{align*} x = \lim_{\pi_{1} \to 1} \frac{\mu_{1} + \mu_{2}}{2} -\infty \qquad  x = \frac{\mu_{1} + \mu_{2}}{2} \text{ with } \pi_1 = \pi_2 \qquad x = \lim_{\pi_{1} \to 0^{+}} \frac{\mu_{1} + \mu_{2}}{2} -\infty \end{align*}
 Hence, the decision boundary is equal to the average mean of the covariate among the two classes for perfectly symmetrically distributed classes. If the two classes are imbalanced, in turn, the decision boundary moves infinitely to the right or to the left. As a consequence, the model will simply always predict the class that is heavily overrepresented and ignore the others. The methodology presented in the next chapter will exactly address this issue and, hence, improve the prediction accuracy of inspection grades B and C.
 
-\chapter{Analysis Methodology}
+\section{Analysis Methodology}
 
-Our approach to overcome the Class Imbalance Problem is related to bagging. \citet{James}[p. ] use bagging to reduce the variance in tree models. Instead of taking a random subset of the entire data like in bagging, we use repeated subsets that show an equal distribution of the three classes. Therefore, we either take more observations from the B or C class known as oversampling or we apply undersampling and take only a part of the observations from the A class. XXX outlines that both approaches have drawbacks. While oversampling increases the likelihood for overfitting since we create exact copies of a minority class, undersampling ignores potentially useful data points.
+Our approach to overcome the Class Imbalance Problem is related to bagging. \citet[p. ]{James} use bagging to reduce the variance in tree models. However, instead of taking a random subset of the entire data like in bagging, we use repeated subsets that show an equal distribution of the three classes. Therefore, we either take more observations from the B or C class known as oversampling or we apply undersampling and take only a part of the observations from the A class. \citet[p. 83]{imbalance} outlines that both approaches have drawbacks. While oversampling increases the likelihood for overfitting since we create exact copies of a minority class, undersampling ignores potentially useful data points. To address these weaknesses, we combine over- and undersampling with bagging which results in over- and under-bagging. According to \citet[pp. 174 - 176]{imbalance}, over- and under-bagging represent strong methods to overcome an imbalance issue that are relatively simple to implement. We combine this approach with a forward-stepwise-selection that is suggested by \citet[p. ]{James}. In detail, we created our own model selection algorithm that processes the following steps:
+\begin{enumerate}
+\item Take a subset of the data where the three classes are balanced either with over- or undersampling
+\item Divide the subset in K equally sized folds for K-Fold Cross-Validation (CV)
+\item Use nine folds as training data to estimate the model with one variable for each p variables
+\item Use the remaining fold as testing data to make predictions
+\item Calculate the rate of wrong predictions
+\item Repeat step X to Y until all folds are used as testing data (K times)
+\item Calculate the average of all error rates and take the model with the lowest CV error
+\item Add one additional variable and apply step X to Y again
+\item Repeat the entire process B times and then take the average rate of the CV error to get the bagged-CV-errors
+\end{enumerate}
+After we found the model with the lowest bagged-CV-error, we estimate the model B times and then we take majority vote of all the B models to classify the observation to one of the three categories.
+
+\section{Pre-Analysis Variable Elimination}
+The obvious drawback of the described methodology is that it is computationally intensive. Using all XX variables would be accordingly difficult given the extent of this project. A boosting model with 100 variables, for instance, would run for XX hours. Furthermore, some of the demographic variables are anyways linear combinations of each other and must be excluded from our analysis. For the remaining ones, we calculate the correlation to the Inspection Grade we want to predict and take the 20 covariates with the highest correlation.
 
 
-
-City level, in turn, shows a more balanced distribution among the three classes. This is an other reason apart from the availability of covariates why chose to limit our analysis on New York City data.
 
 \chapter{Conclusion}
 --> Wrong predictors
