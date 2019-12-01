@@ -245,6 +245,8 @@ ny_inspect_dem <- merge(ny_inspect_data, demographic_data, by = "Address")
 ny_inspect_dem <- ny_inspect_dem[complete.cases(ny_inspect_dem),]
 ny_inspect_data <- ny_inspect_dem
 
+rm(ny_inspect_dem, demographic_data)
+
 #########################################################################################
 
 # Add Airbnb Data----
@@ -332,37 +334,57 @@ save(ny_inspect_data, file = "./data/ny_inspect_data.RData")
 # Create Map Plots of State Data and NY City Data
 #########################################################################################
 
-# Plot1: Map of NYC with Points
-
+# Plot1: Map of NY State with Shop Locations
 # Retrieves State Map (Takes a while)
 map_ny_state <- get_stamenmap(bbox = c(left = -79.7517, bottom = 40.5092, right = -71.9069, top = 44.9967),
                             zoom = 11,
                             maptype ='terrain',
                             color = 'color',
                             scale = 4)
+# Plot of NY State
+Plot1 <- ggmap(map_ny_state) +
+  geom_point(aes(x = Longitude, y = Latitude, color=factor(Inspection.Grade)), data = inspect_data, size = 0.6) +
+  scale_color_manual(labels = c("A", "B", "C"), values = c("green", "yellow", "red")) +
+  labs(color = "Rating") +
+  theme(legend.text = element_text(size = 15),
+        legend.title = element_text(size = 14),
+        axis.text=element_text(size=12),
+        axis.title=element_text(size=14,face="bold"))
 
+ggsave("./plots/Plot1_Map.png", plot = Plot1)
+
+
+# Plot2: Map of NY City with Shop Locations
 # Retrieves City Map
 map_nyc <- get_stamenmap(bbox = c(left = -74.2000, bottom = 40.5500, right = -73.6500, top = 40.9500),
                          zoom = 11,
                          maptype ='terrain',
                          color = 'color',
                          scale = 4)
-
-
-Plot1a <- ggmap(map_ny_state) +
-  geom_point(aes(x = Longitude, y = Latitude, color=factor(Inspection.Grade)), data = inspect_data, size = 0.6) +
-  theme(legend.position = "none")
-
-Plot1b <- ggmap(map_nyc) +
+# Plot of NY City
+Plot2 <- ggmap(map_nyc) +
   geom_point(aes(x = Longitude, y = Latitude, color=factor(Inspection.Grade)), data = ny_inspect_data, size = 0.6) +
-  scale_color_manual(labels = c("A", "B", "C"), values = c("blue", "red", "green")) +
-  labs(color = "Rating")
+  scale_color_manual(labels = c("A", "B", "C"), values = c("green", "yellow", "red")) +
+  labs(color = "Rating") +
+  theme(legend.text = element_text(size = 15),
+        legend.title = element_text(size = 14),
+        axis.text=element_text(size=12),
+        axis.title=element_text(size=14,face="bold"))
 
-Plot1 <- grid.arrange(Plot1a, Plot1b, ncol=2)
+ggsave("./plots/Plot2_Map.png", plot = Plot2)
 
-# Save Plot1
-ggsave("./plots/Plot1_Map.png", plot = Plot1a)
-ggsave("./plots/Plot2_Map.png", plot = Plot1b)
+# Plot of NY City with Subway Stations
+Plot3 <- ggmap(map_nyc) +
+  geom_point(aes(x = Longitude, y = Latitude, color=factor(Inspection.Grade)), data = ny_inspect_data, size = 0.6, alpha = 0.5) +
+  scale_color_manual(labels = c("A", "B", "C"), values = c("green", "yellow", "red")) +
+  labs(color = "Rating") +
+  geom_point(aes(x = Longitude, y = Latitude), data = subway_data, size = 0.8, show.legend = FALSE, alpha = 1)
+  theme(legend.text = element_text(size = 15),
+        legend.title = element_text(size = 14),
+        axis.text=element_text(size=12),
+        axis.title=element_text(size=14,face="bold"))
+
+ggsave("./plots/Plot3_Map.png", plot = Plot3)
 
 rm(subway_data)
 #########################################################################################
