@@ -1,5 +1,3 @@
-#install.packages("gender")
-#install.packages("genderdata", repos = "http://packages.ropensci.org", type = "source")
 library("tidyverse")
 library("readr")
 library("gender")

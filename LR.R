@@ -106,8 +106,9 @@ table(glm.pred, )
 
 
 
-
-# Polynomial logistical regression
+#
+# Ordinal logistical regression
+#
 
 pDa<- na.omit(ny_inspect_dat[,c("Inspection.Grade", "Number_of_Reviews", "Income.per.CenTrac")])
 pDa <-data.frame(Inspection.Grade=factor(pDa[,"Inspection.Grade"]),scale(pDa[,c("Inspection.Grade", "Number_of_Reviews", "Income.per.CenTrac")]))
@@ -156,4 +157,7 @@ lasso.predicted.classes <- ifelse(lasso.probabilities > 0.5, "Issue", "No Issue"
 observed.classes <- tDa[-(train_tDa), "Inspection.Grade"]
 mean(predicted.classes == observed.classes)
 
+#
+# Lasso Ordinal logistic regression
+#
 
