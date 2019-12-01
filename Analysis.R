@@ -8,15 +8,13 @@ library(class) # For KNN
 
 set.seed(123)
 
-# Load data for entire state
-load("./data/inspect_data.RData")
 # Load data for NYC
 load("./data/ny_inspect_data.RData")
 
 # ensure that no variables contain NA
 colSums(is.na(ny_inspect_data))
 
-# Remove everything except the covariates
+# Remove everything except the potential covariates
 ny_data <- ny_inspect_data %>%
   dplyr::select(-c(Address,
                    Trade.Name, 
@@ -38,14 +36,43 @@ ny_data <- ny_inspect_data %>%
                    neighbourhood_group, 
                    Pacific.per.County))
 
+# For computation restriction, we need to limit our analysis to the most important covariates
+# Therfore, we take the 20 variables with the highest correlation to Inspection Grade.
+
 # Correlation in aboslute term to Inspetion Grade
 res <- abs(cor(ny_data))[,1]
 res <- as.data.frame(res)
 # 21 largest correlation (inclusive Inspection Grade to itself)
-largest_corr <- sort(res[,1], decreasing = TRUE)[1:21]
+largest_corr <- sort(res[,1], decreasing = TRUE)[1:41]
 covariates <- rownames(res)
 # 20 variables with the larges correlation to inspection grade
 covariates <- covariates[which(res[,1] %in% largest_corr)]
+
+# Demographic data are extremely prone to multicolinrearity
+# Check correlation of variables
+cor = cor(ny_data)
+# exclude all that are highly correlated to each other
+covariates <- covariates[which(!(covariates %in% c("SelfEmployed.per.County", 
+                                                   "Walk.per.County", 
+                                                   "PrivateWork.per.County", 
+                                                   "Construction.per.County", 
+                                                   "Drive.per.County", 
+                                                   "Carpool.per.County", 
+                                                   "Men.per.County", 
+                                                   "MeanCommute.per.County", 
+                                                   "WorkAtHome.per.County",
+                                                   "FamilyWork.per.County",
+                                                   "PublicWork.per.County",
+                                                   "VotingAgeCitizen.per.County",
+                                                   "Transit.per.County",
+                                                   "Employed.per.County",
+                                                   "Native.per.County",
+                                                   "TotalPop.per.County",
+                                                   "PrivateWork.per.CenTrac",
+                                                   "IncomeErr.per.County",
+                                                   "IncomePerCap.per.County",
+                                                   "Hispanic.per.County")))]
+#"Construction.per.County", "Drive.per.County"
 
 # Select 20 best covariates
 ny_data <- ny_data %>%
@@ -207,10 +234,10 @@ over_under_bagging <- function(df, Y, B, sample_size, FUN){
     Bag_err[,i] <- as.matrix(err[, 1])
   }
   Bag_err_final <- as.tibble(apply(Bag_err, 1, mean, na.rm=TRUE))
-  Bag_err_final <- cbind(1:(length(df)-1), CV_err_final)
+  Bag_err_final <- cbind(1:(length(df)-1), Bag_err_final)
   #oob_err_final <- as.matrix(apply(oob_err, 1, mean, na.rm=TRUE))
   #rownames(oob_err_final) <-  rownames(err)
-  return(CV_err_final)
+  return(Bag_err_final)
 }
 
 # Implement over- and under-bagging with OOB Errors
@@ -394,11 +421,15 @@ rm(g, grid_data, r, lda_pred, resolution, xs, ys, dec_border, zs)
 # Coefficients give the lane / plane where the prediction changes / prediction boundaries
 
 # implement QDA with under-bagging
+start_time <- Sys.time()
 qda_under_bagging_error <- over_under_bagging(ny_data,
                                               Y = "Inspection.Grade",
                                               B = 1,
                                               sample_size = c(700, 700, 700),
                                               FUN = qda)
+end_time <- Sys.time()
+
+
 # implement QDA with over-bagging
 qda_over_bagging_error <- over_under_bagging(ny_data,
                                              Y = "Inspection.Grade",
