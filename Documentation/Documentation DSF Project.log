@@ -1,4 +1,4 @@
-This is pdfTeX, Version 3.14159265-2.6-1.40.18 (TeX Live 2017) (preloaded format=pdflatex 2018.2.14)  2 DEC 2019 22:48
+This is pdfTeX, Version 3.14159265-2.6-1.40.18 (TeX Live 2017) (preloaded format=pdflatex 2018.2.14)  2 DEC 2019 22:55
 entering extended mode
  restricted \write18 enabled.
  file:line:error style messages enabled.
@@ -649,7 +649,10 @@ File: Plots/ice_plots.pdf Graphic file (type pdf)
 Package pdftex.def Info: Plots/ice_plots.pdf used on input line 191.
 (pdftex.def)             Requested size: 234.8775pt x 147.26685pt.
 
-[11 <./Plots/ice_plots.pdf> <./Plots/var_imp_under.pdf> <./Plots/var_imp_over.p
+
+LaTeX Warning: Reference `ICE' on page 11 undefined on input line 195.
+
+[11 <./Plots/var_imp_under.pdf> <./Plots/var_imp_over.pdf> <./Plots/ice_plots.p
 df>] <Plots/Plot12_KNN_Error.png, id=264, 2107.875pt x 1204.5pt>
 File: Plots/Plot12_KNN_Error.png Graphic file (type png)
 
@@ -689,13 +692,17 @@ Package atveryend Info: Executing hook `AtEndAfterFileList' on input line 227.
 Package rerunfilecheck Info: File `"Documentation DSF Project".out' has not cha
 nged.
 (rerunfilecheck)             Checksum: 7BB0F693EC8141D9034779FC71D389BC;1157.
+
+
+LaTeX Warning: There were undefined references.
+
 Package atveryend Info: Empty hook `AtVeryVeryEnd' on input line 227.
  ) 
 Here is how much of TeX's memory you used:
- 9530 strings out of 492980
- 141547 string characters out of 6132509
+ 9531 strings out of 492980
+ 141552 string characters out of 6132509
  252349 words of memory out of 5000000
- 12912 multiletter control sequences out of 15000+600000
+ 12913 multiletter control sequences out of 15000+600000
  10843 words of font info for 40 fonts, out of 8000000 for 9000
  1141 hyphenation exceptions out of 8191
  44i,18n,49p,966b,460s stack positions out of 5000i,500n,10000p,200000b,80000s
@@ -719,7 +726,7 @@ exmf-dist/fonts/type1/public/cm-super/sfcc1728.pfb></usr/local/texlive/2017/tex
 mf-dist/fonts/type1/public/cm-super/sfcc2074.pfb></usr/local/texlive/2017/texmf
 -dist/fonts/type1/public/cm-super/sfrm1200.pfb></usr/local/texlive/2017/texmf-d
 ist/fonts/type1/public/cm-super/sfrm1440.pfb>
-Output written on "Documentation DSF Project.pdf" (13 pages, 12231892 bytes).
+Output written on "Documentation DSF Project.pdf" (13 pages, 12232173 bytes).
 PDF statistics:
  350 PDF objects out of 1000 (max. 8388607)
  290 compressed objects within 3 object streams
