@@ -1,9 +1,12 @@
+# Header----#############################################################################
+
 library(tidyverse)
 library(plyr) # for ldply (similar to apply but output is a df not a list)
 library(MASS) # For Discriminant Analysis
 library(ISLR) # For Discriminant Analysis
-install.packages("./class_7.3-15.tar.gz")
 library(class) # For KNN
+
+#########################################################################################
 
 # Tranformation before analysis----######################################################
 
@@ -45,14 +48,14 @@ ny_data <- ny_inspect_data %>%
 # Correlation in aboslute term to Inspetion Grade
 res <- abs(cor(ny_data))[,1]
 res <- as.data.frame(res)
-# 21 largest correlation (inclusive Inspection Grade to itself)
+# 41 largest correlation (inclusive Inspection Grade to itself)
 largest_corr <- sort(res[,1], decreasing = TRUE)[1:41]
 covariates <- rownames(res)
-# 20 variables with the larges correlation to inspection grade
+# 40 variables with the larges correlation to inspection grade
 covariates <- covariates[which(res[,1] %in% largest_corr)]
 
 # Demographic data are extremely prone to multicolinrearity
-# Check correlation of variables
+# Correlation matrix reveals which covariate pairs are an issue
 cor = cor(ny_data)
 # exclude all that are highly correlated to each other
 covariates <- covariates[which(!(covariates %in% c("SelfEmployed.per.County", 
@@ -82,30 +85,57 @@ ny_data <- ny_data %>%
   mutate(Inspection.Grade = factor(Inspection.Grade, levels = c(1, 2, 3), labels = c("A", "B", "C"))) %>%
   dplyr::select(covariates)
 
-# change the variable from factor to numeric for KNN and Boosting
-ny_data <- ny_data %>%
-  mutate(neighbourhood_group = as.numeric(neighbourhood_group))
-
 rm(ny_inspect_data, res, cor, covariates, largest_corr)
 
 #########################################################################################
 
-# First descriptive plots----############################################################
+# Histograms----#########################################################################
 
-ggplot(data = ny_data, aes(x=Inspection.Grade)) +
-  geom_histogram(stat = "count", fill = "lightgrey") +
+# Histogram of the inspection classes - city level
+Plot4 <- ggplot(data = ny_data, aes(x=Inspection.Grade)) +
+  geom_histogram(stat = "count", color="darkblue", fill="lightblue") +
   theme(legend.position="top") +
   labs(title="Histogram of Inspection Grades",
        x="Grade from A to C",
        y = "Count") +
-  theme_gray()
+  theme_gray() +
+  theme(legend.position="right",
+        legend.text = element_text(size = 17),
+        legend.title = element_text(size = 16),
+        axis.text=element_text(size=14),
+        axis.title=element_text(size=16,face="bold"))
+
+ggsave("./plots/Plot4_Hist_NYC.png", plot = Plot4, width = 7, height = 4, dpi = 300)
+
+# Load state data
+load("./data/inspect_data.RData")
+
+# Change inspection grade to factor
+inspect_data <- inspect_data %>%
+  mutate(Inspection.Grade = factor(Inspection.Grade, levels = c(1, 2, 3), labels = c("A", "B", "C")))
+
+# Histogram of the inspection classes - city level
+Plot5 <- ggplot(data = inspect_data, aes(x=Inspection.Grade)) +
+  geom_histogram(stat = "count", color="darkblue", fill="lightblue") +
+  theme(legend.position="top") +
+  labs(title="Histogram of Inspection Grades",
+       x="Grade from A to C",
+       y = "Count") +
+  theme_gray() +
+  theme(legend.position="right",
+        legend.text = element_text(size = 17),
+        legend.title = element_text(size = 16),
+        axis.text=element_text(size=14),
+        axis.title=element_text(size=16,face="bold"))
+
+ggsave("./plots/Plot5_Hist_NYState.png", plot = Plot5, width = 7, height = 4, dpi = 300)
+
+rm(inspect_data, Plot4, Plot5)
 
 #########################################################################################
 
-#LDA Model Selection----#################################################################
+# Not used functions----#################################################################
 
-# Not used functions
-###
 # implements forward-stepwise-selection and K-Fold CV
 # as suggested by James et al (pp. 205 - 206)
 # First we wanted to estimate all possible model combinations
@@ -190,7 +220,75 @@ over_under_bagging <- function(df, Y, B, sample_size, FUN){
   oob_err_final <- cbind(rownames(err), oob_err_final)
   return(oob_err_final)
 }
-###
+
+# Slightly adjusted function for knn
+# ( changed or added lines are marked with #<<<<<< )
+# Did not work because of limitations of the knn function
+# knn has a max number of k of 1000. Discrete data with low variance
+# created errors
+forward_stepwise_selection <- function(df, Y, FUN, K = 10, k){
+  browser()
+  # All covariate names
+  covariates <- colnames(df)
+  covariates <- covariates[which(covariates != Y)]
+  # number of covaraies
+  p <- length(covariates)
+  # df to store errors
+  model_errors <- data.frame(Model = character(),
+                             Error = double(),
+                             stringsAsFactors=FALSE)
+  # vector for used covariates
+  model_covariates <- c()
+  # model estimate for each number of covariates
+  for(i in 0:(p-1)){
+    # Not yet used covariates
+    not_model_covariates <- covariates[which(!(covariates %in% model_covariates))]
+    # identity matrix to select each variable once
+    select_covaraite <- .col(c((p-i), (p-i))) == .row(c((p-i), (p-i)))
+    # covariate combinations for model estimate
+    allModelsList <- adply(select_covaraite, 1, function(x) c(model_covariates, not_model_covariates[x]))
+    allModelsList <- allModelsList[, 2:(i+2)] 
+    # Implement cross validation
+    fold <- round(nrow(df) / K)
+    cross_val_err = matrix(data = NA, nrow = length(not_model_covariates), ncol = K)
+    for(j in 1:K){
+      # We need to exclude 4 variables with low variety becuase the tiels of KNN are limited to 1000
+      #df <- df %>% #<<<<<<
+      #  dplyr::select(-c("count", "rating_closest_neighbour", "White.per.County", "OtherTransp.per.County")) #<<<<<<
+      train_data <- df[-c((1+(j-1)*fold):(j*fold)),]
+      testing_data <- df[(1+(j-1)*fold):(j*fold),]
+      # Class vectors
+      Y_train <- train_data[, Y] #<<<<<<
+      Y_test <- testing_data[, Y] #<<<<<<
+      # Change format that it works with knn function
+      Y_train <- factor(as.matrix(Y_train)) #<<<<<<
+      # predict models
+      model_pred <- lapply(allModelsList, function(x) 
+        FUN(train = train_data[, as.matrix(x)], test = testing_data[, as.matrix(x)], cl = Y_train, k = k)) #<<<<<<
+      # Each column = Prediction results for one variable used
+      model_pred <- data.frame(matrix(unlist(model_pred), ncol=length(model_pred), byrow=F))
+      colnames(model_pred) <- not_model_covariates
+      # Prediction Error (Rate of Wrong Predictions)
+      pred_error <- apply(model_pred, 2, function(x) x != as.matrix(Y_test)) #<<<<<<
+      pred_error <- as.data.frame(
+        apply(pred_error, 2, function(x) sum(x, na.rm = TRUE)/nrow(testing_data)))
+      cross_val_err[,j] <- pred_error[, 1]
+    }
+    # Average of CV prediction error
+    cross_val_err <- as.tibble(apply(cross_val_err, 1, mean, na.rm=TRUE))
+    # Best prediction (takes the first one if equal performance)
+    best_covariate <- not_model_covariates[which(cross_val_err == min(cross_val_err))[1]]
+    model_covariates <- c(model_covariates, best_covariate)
+    # Error of best prediction
+    model_errors[(i+1), 2] <- min(cross_val_err)
+    # best model
+    model_errors[(i+1), 1] <- allModelsList[which(cross_val_err == min(cross_val_err))[1]]
+  }
+  return(model_errors)
+}
+#########################################################################################
+
+#LDA Model Selection----#################################################################
 
 # implements forward-stepwise-selection and K-Fold CV
 # as suggested by James et al (pp. 207 - 208)
@@ -369,7 +467,7 @@ lda_performance <- lda_performance %>%
                           lda_imbal_error))
 
 # error plot to illustrate the usefulness of over- / under-bagging
-Plot4 <- ggplot(data = lda_performance) +
+Plot6 <- ggplot(data = lda_performance) +
   geom_line(aes(x = Nr_Covariates, y = error, colour=method)) +
   geom_point(aes(x = Nr_Covariates, y = error, colour=method)) +
   geom_vline(xintercept = best_model_nr, linetype = "dotted", color = "Black", size = 0.5) +
@@ -386,10 +484,11 @@ Plot4 <- ggplot(data = lda_performance) +
         axis.text=element_text(size=14),
         axis.title=element_text(size=16,face="bold"))
 
-ggsave("./plots/Plot4_Method.png", plot = Plot4, width = 7, height = 4, dpi = 300)
+ggsave("./plots/Plot6_Method.png", plot = Plot6, width = 7, height = 4, dpi = 300)
 
+rm(lda_NO_bagging_error_1, lda_NO_bagging_error_2, lda_imbal_error, sampleA, sampleB, sampleC, i, nam, Plot6, bagging_data)
 
-# bind all errors to a tibble
+# bind only over- and under-bagging errors to a tibble
 lda_performance <- as.tibble(cbind(Nr_Covariates = 1:(ncol(ny_data) - 1),
                                    lda_under_bagging_error = lda_under_bagging_error[, 2],
                                    lda_over_bagging_error =lda_over_bagging_error[, 2]))
@@ -400,7 +499,7 @@ lda_performance <- lda_performance %>%
                           lda_over_bagging_error))
 
 # error plot LDA
-Plot5 <- ggplot(data = lda_performance) +
+Plot7 <- ggplot(data = lda_performance) +
   geom_line(aes(x = Nr_Covariates, y = error, colour=method)) +
   geom_point(aes(x = Nr_Covariates, y = error, colour=method)) +
   geom_vline(xintercept = best_model_nr, linetype = "dotted", color = "Black", size = 0.5) +
@@ -417,17 +516,18 @@ Plot5 <- ggplot(data = lda_performance) +
         axis.text=element_text(size=14),
         axis.title=element_text(size=16,face="bold"))
 
-ggsave("./plots/Plot5_LDA_Error.png", plot = Plot5, width = 7, height = 4, dpi = 300)
+ggsave("./plots/Plot7_LDA_Error.png", plot = Plot7, width = 7, height = 4, dpi = 300)
 
-rm(lda_over_bagging_error, lda_under_bagging_error)
-rm(i, j, covariates, covariates_comb)
+rm(lda_performance, Plot7)
 #########################################################################################
 
 # LDA Estimate Selected Model----########################################################
 
 # Now we implement the best model we have selected before
 
-# Initialize grid values for plots
+# Initialize grid values to illustrate decision boundaries
+# (Used for all models)
+# we use "shop_density" and "White.per.CenTrac" because the data is well distributed
 resolution = 200
 r <- sapply(ny_data[c("shop_density", "White.per.CenTrac")], range, na.rm = TRUE)
 xs <- seq(r[1,1], r[2,1], length.out = resolution)
@@ -467,7 +567,7 @@ for (i in 1:B){
   # bagging sample
   sample <- bagging_sample(ny_data,
                  Y = "Inspection.Grade",
-                 sample_size = c(700, 700, 700))
+                 sample_size = c(5000, 5000, 5000)) # over-bagging performed better than under-bagging
   # fits the model with the bagging sample
   model_fit <- lda(best_model, data = sample)
   bagged_models <- c(bagged_models, list(model_fit))
@@ -501,17 +601,14 @@ lda_pred_matrix <- table(pred_lda, ny_data$Inspection.Grade, dnn = c("prediction
 # bind grid data
 grid_data <- cbind(pred_lda_plot, g)
 grid_data <- as.data.frame(grid_data)
-# Decision border
-dec_border <- matrix(as.integer(lda_pred), nrow = resolution, byrow = TRUE)
-zs <- lda_pred$post[, c("A","B")] %*% c(1,1)
 
-Plot6 <- ggplot(data = ny_data, aes(y = shop_density, x = White.per.CenTrac)) +
+Plot8 <- ggplot(data = ny_data, aes(y = shop_density, x = White.per.CenTrac)) +
   geom_point(data = grid_data, aes(color=pred_lda_plot), alpha=0.3, size = 0.5) +
   geom_point(aes(color=Inspection.Grade), alpha=1)+
   #geom_contour(aes(y = ys, x = xs, z=zs), 
   #             breaks=c(0,.5))
   labs(title="Decision Boundaries LDA",
-       x="Ethnicity White per CenTrac",
+       x="Ethnicity White per CensusTrac",
        y = "Shop Density in 1km Radius",
        color = "Method") +
   theme_gray() +
@@ -521,11 +618,21 @@ Plot6 <- ggplot(data = ny_data, aes(y = shop_density, x = White.per.CenTrac)) +
         axis.text=element_text(size=14),
         axis.title=element_text(size=16,face="bold"))
 
-ggsave("./plots/Plot6_LDA_Boundaries.png", plot = Plot6, width = 7, height = 4, dpi = 300)
+ggsave("./plots/Plot8_LDA_Boundaries.png", plot = Plot8, width = 7, height = 4, dpi = 300)
 
 
-rm(g, grid_data, r, lda_pred, resolution, xs, ys, dec_border, zs)
-rm(maj_vote, sample, model_fit, model_pred, B, i)
+rm(bagged_models, 
+   bagged_predictions_plot, 
+   bagged_predictions, 
+   model_fit, 
+   model_pred, 
+   Plot8, 
+   r, B, xs, ys, i,
+   sample, 
+   grid_data,
+   pred_lda,
+   pred_lda_plot,
+   resolution)
 
 #########################################################################################
 
@@ -582,7 +689,7 @@ qda_performance <- qda_performance %>%
                           qda_over_bagging_error))
 
 # error plot QDA
-Plot7 <- ggplot(data = qda_performance) +
+Plot9 <- ggplot(data = qda_performance) +
   geom_line(aes(x = Nr_Covariates, y = error, colour=method)) +
   geom_point(aes(x = Nr_Covariates, y = error, colour=method)) +
   geom_vline(xintercept = best_model_nr, linetype = "dotted", color = "Black", size = 0.5) +
@@ -599,7 +706,7 @@ Plot7 <- ggplot(data = qda_performance) +
         axis.text=element_text(size=14),
         axis.title=element_text(size=16,face="bold"))
 
-ggsave("./plots/Plot7_QDA_Error.png", plot = Plot7, width = 7, height = 4, dpi = 300)
+ggsave("./plots/Plot9_QDA_Error.png", plot = Plot9, width = 7, height = 4, dpi = 300)
 
 # bind all LDA and QDA errors to a tibble to combine them in one plot
 lda_qda_performance <- as.tibble(cbind(Nr_Covariates = 1:(ncol(ny_data) - 1),
@@ -616,11 +723,12 @@ lda_qda_performance <- lda_qda_performance %>%
                           lda_over_bagging_error))
 
 # error plot QDA
-Plot8 <- ggplot(data = lda_qda_performance) +
+Plot10 <- ggplot(data = lda_qda_performance) +
   geom_line(aes(x = Nr_Covariates, y = error, colour=method)) +
   geom_point(aes(x = Nr_Covariates, y = error, colour=method)) +
   geom_vline(xintercept = best_model_nr, linetype = "dotted", color = "Black", size = 0.5) +
-  labs(x="Number of Covariats",
+  labs(title = "LDA vs QDA Error",
+       x="Number of Covariats",
        y = "Error Rate",
        color = "Method") +
   scale_color_manual(labels = c("LDA Over-Bagging", "LDA Under-Bagging", "QDA Over-Bagging", "QDA Under-Bagging"), 
@@ -632,9 +740,9 @@ Plot8 <- ggplot(data = lda_qda_performance) +
         axis.text=element_text(size=14),
         axis.title=element_text(size=16,face="bold"))
 
-ggsave("./plots/Plot8_LDA_QDA_Error.png", plot = Plot8, width = 7, height = 4, dpi = 300)
+ggsave("./plots/Plot10_LDA_QDA_Error.png", plot = Plot10, width = 7, height = 4, dpi = 300)
 
-rm(model_selection, over_under_bagging, lda_over_bagging_error, lda_under_bagging_error)
+rm(lda_qda_performance, Plot10, Plot9, qda_performance)
 
 #########################################################################################
 
@@ -651,7 +759,7 @@ for (i in 1:B){
   # bagging sample
   sample <- bagging_sample(ny_data,
                            Y = "Inspection.Grade",
-                           sample_size = c(5000, 5000, 5000))
+                           sample_size = c(5000, 5000, 5000)) # over-bagging performed better than under-bagging
   # fits the model with the bagging sample
   model_fit <- qda(best_model, data = sample)
   bagged_models <- c(bagged_models, list(model_fit))
@@ -680,7 +788,7 @@ qda_pred_matrix <- table(pred_qda, ny_data$Inspection.Grade, dnn = c("prediction
 grid_data <- cbind(pred_qda_plot, g)
 grid_data <- as.data.frame(grid_data)
 
-Plot9 <- ggplot(data = ny_data, aes(y = shop_density, x = White.per.CenTrac)) +
+Plot11 <- ggplot(data = ny_data, aes(y = shop_density, x = White.per.CenTrac)) +
   geom_point(data = grid_data, aes(color=pred_qda_plot), alpha=0.3, size = 0.5) +
   geom_point(aes(color=Inspection.Grade), alpha=1)+
   #geom_contour(aes(y = ys, x = xs, z=zs), 
@@ -696,9 +804,21 @@ Plot9 <- ggplot(data = ny_data, aes(y = shop_density, x = White.per.CenTrac)) +
         axis.text=element_text(size=14),
         axis.title=element_text(size=16,face="bold"))
 
-ggsave("./plots/Plot9_QDA_Boundaries.png", plot = Plot9, width = 7, height = 4, dpi = 300)
+ggsave("./plots/Plot11_QDA_Boundaries.png", plot = Plot11, width = 7, height = 4, dpi = 300)
 
-rm(g, grid_data, r, lda_pred, resolution, xs, ys, dec_border, zs)
+rm(model_fit, 
+   model_pred, 
+   bagged_models, 
+   bagged_predictions, 
+   bagged_predictions_plot, 
+   sample, 
+   best_model, 
+   best_model_nr,
+   i,
+   pred_qda,
+   pred_qda_plot,
+   Plot11,
+   grid_data)
 
 #########################################################################################
 
@@ -706,67 +826,6 @@ rm(g, grid_data, r, lda_pred, resolution, xs, ys, dec_border, zs)
 
 # Slightly adjust the function to KNN
 # ( changed or added lines are marked with #<<<<<< )
-forward_stepwise_selection <- function(df, Y, FUN, K = 10, k){
-  browser()
-  # All covariate names
-  covariates <- colnames(df)
-  covariates <- covariates[which(covariates != Y)]
-  # number of covaraies
-  p <- length(covariates)
-  # df to store errors
-  model_errors <- data.frame(Model = character(),
-                             Error = double(),
-                             stringsAsFactors=FALSE)
-  # vector for used covariates
-  model_covariates <- c()
-  # model estimate for each number of covariates
-  for(i in 0:(p-1)){
-    # Not yet used covariates
-    not_model_covariates <- covariates[which(!(covariates %in% model_covariates))]
-    # identity matrix to select each variable once
-    select_covaraite <- .col(c((p-i), (p-i))) == .row(c((p-i), (p-i)))
-    # covariate combinations for model estimate
-    allModelsList <- adply(select_covaraite, 1, function(x) c(model_covariates, not_model_covariates[x]))
-    allModelsList <- allModelsList[, 2:(i+2)] 
-    # Implement cross validation
-    fold <- round(nrow(df) / K)
-    cross_val_err = matrix(data = NA, nrow = length(not_model_covariates), ncol = K)
-    for(j in 1:K){
-      # We need to exclude 4 variables with low variety becuase the tiels of KNN are limited to 1000
-      #df <- df %>% #<<<<<<
-      #  dplyr::select(-c("count", "rating_closest_neighbour", "White.per.County", "OtherTransp.per.County")) #<<<<<<
-      train_data <- df[-c((1+(j-1)*fold):(j*fold)),]
-      testing_data <- df[(1+(j-1)*fold):(j*fold),]
-      # Class vectors
-      Y_train <- train_data[, Y] #<<<<<<
-      Y_test <- testing_data[, Y] #<<<<<<
-      # Change format that it works with knn function
-      Y_train <- factor(as.matrix(Y_train)) #<<<<<<
-      # predict models
-      model_pred <- lapply(allModelsList, function(x) 
-        FUN(train = train_data[, as.matrix(x)], test = testing_data[, as.matrix(x)], cl = Y_train, k = k)) #<<<<<<
-      # Each column = Prediction results for one variable used
-      model_pred <- data.frame(matrix(unlist(model_pred), ncol=length(model_pred), byrow=F))
-      colnames(model_pred) <- not_model_covariates
-      # Prediction Error (Rate of Wrong Predictions)
-      pred_error <- apply(model_pred, 2, function(x) x != as.matrix(Y_test)) #<<<<<<
-      pred_error <- as.data.frame(
-        apply(pred_error, 2, function(x) sum(x, na.rm = TRUE)/nrow(testing_data)))
-      cross_val_err[,j] <- pred_error[, 1]
-    }
-    # Average of CV prediction error
-    cross_val_err <- as.tibble(apply(cross_val_err, 1, mean, na.rm=TRUE))
-    # Best prediction (takes the first one if equal performance)
-    best_covariate <- not_model_covariates[which(cross_val_err == min(cross_val_err))[1]]
-    model_covariates <- c(model_covariates, best_covariate)
-    # Error of best prediction
-    model_errors[(i+1), 2] <- min(cross_val_err)
-    # best model
-    model_errors[(i+1), 1] <- allModelsList[which(cross_val_err == min(cross_val_err))[1]]
-  }
-  return(model_errors)
-}
-
 tuning_parameter_selection <- function(df, Y, FUN, K = 10, k){
   # All covariate names
   covariates <- colnames(df)
@@ -872,7 +931,7 @@ knn_performance <- knn_performance %>%
                           knn_over_bagging_error))
 
 # error plot KNN
-Plot10 <- ggplot(data = knn_performance) +
+Plot12 <- ggplot(data = knn_performance) +
   geom_line(aes(x = k, y = error, colour=method)) +
   geom_point(aes(x = k, y = error, colour=method)) +
   geom_vline(xintercept = best_model_k, linetype = "dotted", color = "Black", size = 0.5) +
@@ -889,9 +948,9 @@ Plot10 <- ggplot(data = knn_performance) +
         axis.text=element_text(size=14),
         axis.title=element_text(size=16,face="bold"))
 
-ggsave("./plots/Plot10_KNN_Error.png", plot = Plot10, width = 7, height = 4, dpi = 300)
+ggsave("./plots/Plot12_KNN_Error.png", plot = Plot12, width = 7, height = 4, dpi = 300)
 
-rm(model_selection, over_under_bagging, lda_over_bagging_error, lda_under_bagging_error)
+rm(knn_performance, Plot12)
 
 #########################################################################################
 
@@ -908,7 +967,7 @@ for (i in 1:B){
   # bagging sample
   sample <- bagging_sample(ny_data,
                            Y = "Inspection.Grade",
-                           sample_size = c(700, 700, 700))
+                           sample_size = c(700, 700, 700)) # Over- and under-baggin work equally well
   covariates <- colnames(sample)
   covariates <- covariates[which(covariates != "Inspection.Grade")]
   # Class vectors
@@ -942,11 +1001,9 @@ knn_pred_matrix <- table(pred_knn, ny_data$Inspection.Grade, dnn = c("prediction
 grid_data <- cbind(pred_knn_plot, g)
 grid_data <- as.data.frame(grid_data)
 
-Plot10 <- ggplot(data = ny_data, aes(y = shop_density, x = White.per.CenTrac)) +
+Plot13 <- ggplot(data = ny_data, aes(y = shop_density, x = White.per.CenTrac)) +
   geom_point(data = grid_data, aes(color=pred_knn_plot), alpha=0.3, size = 0.5) +
   geom_point(aes(color=Inspection.Grade), alpha=1)+
-  #geom_contour(aes(y = ys, x = xs, z=zs), 
-  #             breaks=c(0,.5))
   labs(title="Decision Boundaries KNN",
        x="Ethnicity White per CenTrac",
        y = "Shop Density in 1km Radius",
@@ -958,8 +1015,24 @@ Plot10 <- ggplot(data = ny_data, aes(y = shop_density, x = White.per.CenTrac)) +
         axis.text=element_text(size=14),
         axis.title=element_text(size=16,face="bold"))
 
-ggsave("./plots/Plot11_KNN_Boundaries.png", plot = Plot11, width = 7, height = 4, dpi = 300)
+ggsave("./plots/Plot13_KNN_Boundaries.png", plot = Plot13, width = 7, height = 4, dpi = 300)
 
-rm(g, grid_data, r, lda_pred, resolution, xs, ys, dec_border, zs)
+rm(g, 
+   grid_data, 
+   bagged_models,
+   bagged_predictions,
+   bagged_predictions_plot,
+   B,
+   best_model_k,
+   testing_data,
+   train_data,
+   covariates,
+   i,
+   model_pred,
+   Y_train,
+   pred_knn,
+   pred_knn_plot,
+   plot13,
+   sample)
 
 #########################################################################################
