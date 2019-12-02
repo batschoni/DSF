@@ -260,33 +260,34 @@ data_bnb <- read.csv("data/ab_nyc_19.csv") #reading data
 longitude = as.numeric(data_bnb$longitude)
 latitude = as.numeric(data_bnb$latitude)
 Coordinates  = tibble(longitude, latitude)
-s = shapefile("data/geolocation/ZIP_CODE_040114.shp")
-pts <- Coordinates
+s = shapefile("data/geolocation/ZIP_CODE_040114.shp") #read in the shapefile which contains the geo data of the different 
+pts <- Coordinates                                    #ZIP Code regions in new york
 pts <- pts[complete.cases(pts),]
-coordinates(pts) <- ~longitude+latitude
+coordinates(pts) <- ~longitude+latitude               #transformation package specific
 proj4string(pts) <- CRS("+proj=longlat +datum=WGS84")
 pts <- spTransform(pts, proj4string(s))
 
 # this does the lon/lat to zip mapping
 zip_where <- pts %over% s
-data_bnb = data_bnb %>% 
+data_bnb = data_bnb %>%  #attach the ZIP codes to the airbnb data frame by inner_join of longitude and latitude
   mutate(ZIP = zip_where$ZIPCODE) %>% 
   inner_join(Coordinates, data_bnb, by = c("longitude", "latitude")) %>% 
   dplyr::select(ZIP, price, neighbourhood_group)
 
-summary = data_bnb %>% 
+summary = data_bnb %>%  #summary of the different ZIP codes in order to calculate the average room price for each ZIP code
   group_by(ZIP) %>% 
   dplyr::summarise(count = n(), mean = mean(price))
 
-data_bnb = inner_join(data_bnb, summary, by = "ZIP")
-data_bnb$ZIP = as.numeric(data_bnb$ZIP)
+data_bnb = inner_join(data_bnb, summary, by = "ZIP") #join the new average room price data with the aribnb data frame
+data_bnb$ZIP = as.numeric(data_bnb$ZIP) #convert new ZIP codes to numceric
 
+#tidying the data_bnb dataframe and renaming the new attached parameters
 data_bnb = data_bnb %>% 
   distinct(ZIP, .keep_all = TRUE) %>% 
   dplyr::select(-price) %>% 
-  dplyr::rename(Zip.Code = ZIP, Numb_Rooms = count, Avr_Price = mean)
+  dplyr::rename(Zip.Code = ZIP, Numb_Rooms = count, Avr_Price = mean) 
 
-ny_inspect_data = inner_join(ny_inspect_data, data_bnb, by = "Zip.Code")
+ny_inspect_data = inner_join(ny_inspect_data, data_bnb, by = "Zip.Code") #join the airbnb data frame with the original data frame by zip code
 
 rm(Coordinates, data_bnb, pts, s, summary, zip_where, latitude, longitude)
 
