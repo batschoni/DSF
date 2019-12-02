@@ -1,9 +1,12 @@
+# Header----#############################################################################
+
 library(tidyverse)
 library(plyr) # for ldply (similar to apply but output is a df not a list)
 library(MASS) # For Discriminant Analysis
 library(ISLR) # For Discriminant Analysis
-install.packages("./class_7.3-15.tar.gz")
 library(class) # For KNN
+
+#########################################################################################
 
 # Tranformation before analysis----######################################################
 
@@ -581,12 +584,12 @@ qda_performance <- qda_performance %>%
   gather(method, error, c(qda_under_bagging_error,
                           qda_over_bagging_error))
 
-# error plot LDA
+# error plot QDA
 Plot7 <- ggplot(data = qda_performance) +
   geom_line(aes(x = Nr_Covariates, y = error, colour=method)) +
   geom_point(aes(x = Nr_Covariates, y = error, colour=method)) +
   geom_vline(xintercept = best_model_nr, linetype = "dotted", color = "Black", size = 0.5) +
-  labs(title="Error Rate LDA",
+  labs(title="Error Rate QDA",
        x="Number of Covariats",
        y = "Error Rate",
        color = "Method") +
@@ -600,6 +603,39 @@ Plot7 <- ggplot(data = qda_performance) +
         axis.title=element_text(size=16,face="bold"))
 
 ggsave("./plots/Plot7_QDA_Error.png", plot = Plot7, width = 7, height = 4, dpi = 300)
+
+# bind all LDA and QDA errors to a tibble to combine them in one plot
+lda_qda_performance <- as.tibble(cbind(Nr_Covariates = 1:(ncol(ny_data) - 1),
+                                       qda_under_bagging_error = qda_under_bagging_error[, 2],
+                                       qda_over_bagging_error =qda_over_bagging_error[, 2],
+                                       lda_under_bagging_error = lda_under_bagging_error[, 2],
+                                       lda_over_bagging_error =lda_over_bagging_error[, 2]))
+
+# reshap to long format (for ggplot2)
+lda_qda_performance <- lda_qda_performance %>%
+  gather(method, error, c(qda_under_bagging_error,
+                          qda_over_bagging_error,
+                          lda_under_bagging_error,
+                          lda_over_bagging_error))
+
+# error plot QDA
+Plot8 <- ggplot(data = lda_qda_performance) +
+  geom_line(aes(x = Nr_Covariates, y = error, colour=method)) +
+  geom_point(aes(x = Nr_Covariates, y = error, colour=method)) +
+  geom_vline(xintercept = best_model_nr, linetype = "dotted", color = "Black", size = 0.5) +
+  labs(x="Number of Covariats",
+       y = "Error Rate",
+       color = "Method") +
+  scale_color_manual(labels = c("LDA Over-Bagging", "LDA Under-Bagging", "QDA Over-Bagging", "QDA Under-Bagging"), 
+                     values = c("green", "blue", "orange", "red")) +
+  theme_gray() +
+  theme(legend.position="right",
+        legend.text = element_text(size = 17),
+        legend.title = element_text(size = 16),
+        axis.text=element_text(size=14),
+        axis.title=element_text(size=16,face="bold"))
+
+ggsave("./plots/Plot8_LDA_QDA_Error.png", plot = Plot8, width = 7, height = 4, dpi = 300)
 
 rm(model_selection, over_under_bagging, lda_over_bagging_error, lda_under_bagging_error)
 
@@ -647,7 +683,7 @@ qda_pred_matrix <- table(pred_qda, ny_data$Inspection.Grade, dnn = c("prediction
 grid_data <- cbind(pred_qda_plot, g)
 grid_data <- as.data.frame(grid_data)
 
-Plot8 <- ggplot(data = ny_data, aes(y = shop_density, x = White.per.CenTrac)) +
+Plot9 <- ggplot(data = ny_data, aes(y = shop_density, x = White.per.CenTrac)) +
   geom_point(data = grid_data, aes(color=pred_qda_plot), alpha=0.3, size = 0.5) +
   geom_point(aes(color=Inspection.Grade), alpha=1)+
   #geom_contour(aes(y = ys, x = xs, z=zs), 
@@ -663,7 +699,7 @@ Plot8 <- ggplot(data = ny_data, aes(y = shop_density, x = White.per.CenTrac)) +
         axis.text=element_text(size=14),
         axis.title=element_text(size=16,face="bold"))
 
-ggsave("./plots/Plot8_QDA_Boundaries.png", plot = Plot8, width = 7, height = 4, dpi = 300)
+ggsave("./plots/Plot9_QDA_Boundaries.png", plot = Plot9, width = 7, height = 4, dpi = 300)
 
 rm(g, grid_data, r, lda_pred, resolution, xs, ys, dec_border, zs)
 
@@ -839,7 +875,7 @@ knn_performance <- knn_performance %>%
                           knn_over_bagging_error))
 
 # error plot KNN
-Plot9 <- ggplot(data = knn_performance) +
+Plot10 <- ggplot(data = knn_performance) +
   geom_line(aes(x = k, y = error, colour=method)) +
   geom_point(aes(x = k, y = error, colour=method)) +
   geom_vline(xintercept = best_model_k, linetype = "dotted", color = "Black", size = 0.5) +
@@ -856,7 +892,7 @@ Plot9 <- ggplot(data = knn_performance) +
         axis.text=element_text(size=14),
         axis.title=element_text(size=16,face="bold"))
 
-ggsave("./plots/Plot9_KNN_Error.png", plot = Plot9, width = 7, height = 4, dpi = 300)
+ggsave("./plots/Plot10_KNN_Error.png", plot = Plot10, width = 7, height = 4, dpi = 300)
 
 rm(model_selection, over_under_bagging, lda_over_bagging_error, lda_under_bagging_error)
 
@@ -925,7 +961,7 @@ Plot10 <- ggplot(data = ny_data, aes(y = shop_density, x = White.per.CenTrac)) +
         axis.text=element_text(size=14),
         axis.title=element_text(size=16,face="bold"))
 
-ggsave("./plots/Plot10_KNN_Boundaries.png", plot = Plot10, width = 7, height = 4, dpi = 300)
+ggsave("./plots/Plot11_KNN_Boundaries.png", plot = Plot11, width = 7, height = 4, dpi = 300)
 
 rm(g, grid_data, r, lda_pred, resolution, xs, ys, dec_border, zs)
 
