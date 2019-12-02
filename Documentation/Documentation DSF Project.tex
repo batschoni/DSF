@@ -161,6 +161,45 @@ C &228 & 26 & 103 \\
 
 Next, we implemented K-Nearest Neighbor (knn). First, we tried to implement knn similar to the discriminant analysis with backward stepwise selection. However, we realized that the function only allows up to 1000 neighbors which creates an error for discrete variables with low variance.
 
+\section{Random Forest Analysis}
+
+We decided to use the random forest to have a model with a typically good performance but relatively little tuning requirements. Additionally, the structure of the dataset according to the correlation matrix, seemed rather complex and not linear. Tree models normally outperform linear models in these situations \cite{James}[S. 314] In order to address the problem of class imbalances, the random forest model is built up on bagging mentioned above. Beside several similarities the methodology differs in the following points:
+\begin{enumerate}
+\item Evaluate the different tuning parameter (minimal node size, split rule, number of variables available for splitting at each tree node) in Cross-Validation
+\item Calculate the different errors for all the bagging samples
+\item Choose the model based on the best performance of the tuning parameters
+\item Apply the majority vote to the trained optimal model to get the final predictions
+\end{enumerate}
+
+Although there is normally only little tuning required, the evaluation of tuning parameter is computationally very intensive due to an exponential rise of possible combinations with every new tuning parameter. Therefore we were restricted to a smaller selection of possible tuning grid and only used 40 different combinations. The following graph shows the progress in the model selection process. \\
+
+\begin{figure}[H]
+\centering
+\captionof{figure}{Tuning progress in random forest} \label{rf_tuning}
+
+       \includegraphics[width=0.5\textwidth]{Plots/rf_progress.pdf}
+ 
+
+\end{figure}
+
+The importance of the variables can be shown in figure \ref{var_importance}
+
+\begin{figure}[H]
+\centering
+\captionof{figure}{A variable importance plot for the selected parameters. Variable importance is computed using the mean decrease in Gini index and expressed relative to maximum} \label{var_importance}
+
+       \includegraphics[width=0.5\textwidth]{Plots/var_importance.pdf}
+ 
+
+\end{figure}
+
+Another possibility to 
+
+\section{Gradient Boosting}
+
+As a further method of tree based models we implemented extreme gradient boosting. It enables a better performance than random forest and provides more advanced tuning methods. The selected parameters have XXX different combinations which have to be evaluated. The current approach with a full hyper grid search is computationally very intensive and takes several days with an ordinary computer. Another possibility is to use a random discrete search which does not test all combinations but a sample of it with a stopping parameter. Thus this would have meant to implement another package and due to time restrictions was entirely finished.
+
+
 \section{Conclusion}
 --> Wrong predictors
 
