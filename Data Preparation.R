@@ -349,10 +349,10 @@ Plot1 <- ggmap(map_ny_state) +
   geom_point(aes(x = Longitude, y = Latitude, color=factor(Inspection.Grade)), data = inspect_data, size = 0.6) +
   scale_color_manual(labels = c("A", "B", "C"), values = c("green", "yellow", "red")) +
   labs(color = "Rating") +
-  theme(legend.text = element_text(size = 15),
-        legend.title = element_text(size = 14),
-        axis.text=element_text(size=12),
-        axis.title=element_text(size=14,face="bold"))
+  theme(legend.text = element_text(size = 17),
+        legend.title = element_text(size = 16),
+        axis.text=element_text(size=14),
+        axis.title=element_text(size=16,face="bold"))
 
 ggsave("./plots/Plot1_Map.png", plot = Plot1, dpi = 300)
 
@@ -369,10 +369,10 @@ Plot2 <- ggmap(map_nyc) +
   geom_point(aes(x = Longitude, y = Latitude, color=factor(Inspection.Grade)), data = ny_inspect_data, size = 0.6) +
   scale_color_manual(labels = c("A", "B", "C"), values = c("green", "yellow", "red")) +
   labs(color = "Rating") +
-  theme(legend.text = element_text(size = 15),
-        legend.title = element_text(size = 14),
-        axis.text=element_text(size=12),
-        axis.title=element_text(size=14,face="bold"))
+  theme(legend.text = element_text(size = 17),
+        legend.title = element_text(size = 16),
+        axis.text=element_text(size=14),
+        axis.title=element_text(size=16,face="bold"))
 
 ggsave("./plots/Plot2_Map.png", plot = Plot2, dpi = 300)
 
@@ -382,10 +382,10 @@ Plot3 <- ggmap(map_nyc) +
   scale_color_manual(labels = c("A", "B", "C"), values = c("green", "yellow", "red")) +
   labs(color = "Rating") +
   geom_point(aes(x = Longitude, y = Latitude), data = subway_data, size = 0.8, show.legend = FALSE, alpha = 1)
-  theme(legend.text = element_text(size = 15),
-        legend.title = element_text(size = 14),
-        axis.text=element_text(size=12),
-        axis.title=element_text(size=14,face="bold"))
+  theme(legend.text = element_text(size = 17),
+        legend.title = element_text(size = 16),
+        axis.text=element_text(size=14),
+        axis.title=element_text(size=16,face="bold"))
 
 ggsave("./plots/Plot3_Map.png", plot = Plot3, dpi = 300)
 
