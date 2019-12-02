@@ -1299,7 +1299,7 @@ hyper_grid <- expand.grid(
   max_depth = c(1, 3, 5, 7),
   min_child_weight = c(1, 3, 5, 7),
   subsample = c(.65, .8, 1), 
-  colsample_bytree = c(.8, .9, 1),
+  colsample_bytree = c(.8, .9, 1)
 )
 
 #set up function for applying the bagging to xgb
