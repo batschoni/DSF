@@ -163,8 +163,20 @@ C &2 & 0 & 1859 \\
 
 \subsection{K-Nearest Neighbor}
 
-
-Next, we implemented K-Nearest Neighbor (knn). First, we tried to implement knn similar to the discriminant analysis with backward stepwise selection. However, we realized that the function only allows up to 1000 neighbors which creates an error for discrete variables with low variance.
+Next, we implemented K-Nearest Neighbor (KNN). First, we tried to implement KNN similar to the discriminant analysis and adjusted our backward stepwise selection function for that purpose. However, a restriction in the KNN function only allows up to 1000 neighbors which creates an error for discrete variables with low variance. Therefore, we used all covariates instead and estimated the error for different k again with OU-bagging.\\
+\\
+Panel-(a) in Figure~\ref{knn} shows the estimated bagged-CV-error for different k. The lowest error is achieved with a k of 48. OU-bagging performed de facto equally well. We estimated the best model with k equal to 48 and over-bagging. The resulted error rate of 66\% is quite higher than the estimated bagged-CV-error of 37\%. The prediction matrix of Table~\ref{pred-matrix} shows that knn again overweights the minority classes B and C.\\
+\\
+\begin{figure}
+\captionof{figure}{Geographic Distribution of the inspected Shops \label{knn}} 
+\subfloat[KNN Errors]{%
+       \includegraphics[width=0.5\textwidth]{Plots/Plot12_KNN_Error.png}
+     }
+     \hfill
+     \subfloat[Decision Boundaries KNN]{%
+       \includegraphics[width=0.5\textwidth]{Plots/Plot13_KNN_Boundaries.png}
+     }
+\end{figure}
 
 \section{Random Forest Analysis}
 
@@ -199,24 +211,10 @@ As discussed above and visible in figure \ref{ice} even the most important varia
 As a further method of tree based models we implemented extreme gradient boosting. It enables a better performance than random forest and provides more advanced tuning methods. The selected parameters have XXX different combinations which have to be evaluated. The current approach with a full hyper grid search is computationally very intensive and takes several days with an ordinary computer. Another possibility is to use a random discrete search which does not test all combinations but a sample of it with a stopping parameter. Thus this would have meant to implement another package and due to time restrictions was entirely finished.
 
 
-=======
-Next, we implemented K-Nearest Neighbor (KNN). First, we tried to implement KNN similar to the discriminant analysis and adjusted our backward stepwise selection function for that purpose. However, a restriction in the KNN function only allows up to 1000 neighbors which creates an error for discrete variables with low variance. Therefore, we used all covariates instead and estimated the error for different k again with OU-bagging.\\
-\\
-Panel-(a) in Figure~\ref{knn} shows the estimated bagged-CV-error for different k. The lowest error is achieved with a k of 48. OU-bagging performed de facto equally well. We estimated the best model with k equal to 48 and over-bagging. The resulted error rate of 66\% is quite higher than the estimated bagged-CV-error of 37\%. The prediction matrix of Table~\ref{pred-matrix} shows that knn again overweights the minority classes B and C.\\
-\\
-\begin{figure}
-\captionof{figure}{Geographic Distribution of the inspected Shops \label{knn}} 
-\subfloat[KNN Errors]{%
-       \includegraphics[width=0.5\textwidth]{Plots/Plot12_KNN_Error.png}
-     }
-     \hfill
-     \subfloat[Decision Boundaries KNN]{%
-       \includegraphics[width=0.5\textwidth]{Plots/Plot13_KNN_Boundaries.png}
-     }
-\end{figure}
->>>>>>> 43f8e1438f298b3386c0aff2cc273ffbcacc27ab
 \section{Conclusion}
---> Wrong predictors
+
+Despite the utilization of an array of different variables and methods, the prediction of inspection grades proved to be exceedingly difficult. We believe that the causes for a certain rating can be found in the characteristics of the restaurant themself and not certain attributes of the neighborhood like we use. Therefore, things like the age of the owner, his education or what kind of products are offered would have been more valuable predictors. In addition, the imbalance in the classes further complicated the estimation of accurately predicting models. The over- and under-bagging was computationally too intensive and did not lead to the results we expected. In a similar situation we would, therefore, try to overcome the imbalance issue with other means like the more advanced Synthetic Minority Oversampling TEchnique (SMOTE) that artificially creates new observations of the minority data.
+
 
 
 \newpage
