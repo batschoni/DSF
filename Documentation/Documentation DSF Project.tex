@@ -28,7 +28,7 @@
 \tableofcontents
 \newpage
 \section{Introduction}
-It is estimated that every year 48 million people fall sick, 128?000 are hospitalized and 3?000 die from food born illnesses \citep{Disease}. These numbers clearly illustrate the necessity of clear and strict oversight over any organisation handling large quantities of food, thusly constantly operating under the danger of poisoning a significant part of the population. Among the four governmental agencies working on minimizing food posed risks, the 'Food Safety and Inspection Service' handles (among other things) the inspections of food retailers (Food Safety and Inspection Service, 2018). The agency employs over 9'000 people and presides over an annual budget ranging from 1,03 - 1,05 billion USD, with the cost of its field operations in the State of New York alone totalling 13,3 - 15,3 million USD each year (U.S. Census Bureau, 2018, p. 16)\\
+It is estimated that every year 48 million people fall sick, 128'000 are hospitalized and 3'000 die from food born illnesses \citep{Disease}. These numbers clearly illustrate the necessity of clear and strict oversight over any organisation handling large quantities of food, thusly constantly operating under the danger of poisoning a significant part of the population. Among the four governmental agencies working on minimizing food posed risks, the 'Food Safety and Inspection Service' handles (among other things) the inspections of food retailers (Food Safety and Inspection Service, 2018). The agency employs over 9'000 people and presides over an annual budget ranging from 1,03 - 1,05 billion USD, with the cost of its field operations in the State of New York alone totalling 13,3 - 15,3 million USD each year (U.S. Census Bureau, 2018, p. 16)\\
 \\
 Based on this information, we conclude that successful predictions of which food retailers pose the highest public health risk and the subsequently more efficient allocation of resources, could not only lead to cost reductions of millions of USD every year but might even save lives by preventing the outbreak of dangerous foodborne illnesses. This paper details the data gathering, as well as the application of different analytical methods, aimed to predict the inspection grade of food retailers in NYC.
 
@@ -38,11 +38,11 @@ Based on this information, we conclude that successful predictions of which food
 
 The main dataset for our project is retrieved from the \href{https://data.ny.gov/Economic-Development/Retail-Food-Store-Inspections-Current-Ratings/d6dy-3h7r}{official site of the State of New York}. It contains a total of 28'300 A to C ratings of food store inspections together with basic information of the stores as well as deficiency descriptions.\\
 \\
-Our analysis predicts the food store inspection ratings from this dataset only for the City of New York counties New York, Kings, Bronx, Richmond and Queens). We decided to focus merely on city level due to the vast availability of covariate data. In addition, the distribution of classes is highly imbalanced on state level which can be diminished by focusing on city data only (more about this issue in section~\ref{Imbalance Problem}.
+Our analysis predicts the food store inspection ratings from this dataset only for the City of New York (counties New York, Kings, Bronx, Richmond and Queens). We decided to focus merely on city level due to the vast availability of covariate data. In addition, the distribution of classes is highly imbalanced on state level which can be diminished by focusing on city data only (more about this issue in section~\ref{Imbalance Problem}).
 
 \subsection{Chain Information}
 
-We used the owner information from the data to identify if the shop is a chain as well as the number of other stores from our data that are part of the same chain. Presumably, chains have better processes in place to achieve a high hygiene standards.
+We used information about the owner from the data to identify if the shop is a chain as well as the number of other stores from our data that are part of the same chain. Presumably, chains have better processes in place to achieve a high hygiene standards.
 
 \subsection{Spatial Data}
 
@@ -88,7 +88,7 @@ In order to acquire additional data on the location of the shops, we integrated 
 \section{Data Analysis}
 
 \subsection{The Class Imbalance Problem}\label{Imbalance Problem}
-Closer scrutiny of Figure~\ref{map1} sheds light on the extremely imbalanced distribution of the original data. In fact, the rating A contributes to 64\% on city level while B and C are only represented to 9\% and 27\% respectively. This differences in the occurrence has a large impact on the prediction capabilities of a model. The univariate linear discriminant analysis (LDA) illustrates the issue. The LDA decision rule and boundaries are
+Closer scrutiny of Figure~\ref{map1} sheds light on the extremely imbalanced distribution of the original data. In fact, the rating A contributes to 64\% on city level while B and C are only represented by 9\% and 27\% respectively. This differences in the occurrence has a large impact on the prediction capabilities of a model. The univariate linear discriminant analysis (LDA) illustrates the issue. The LDA decision rule and boundaries are
 \begin{equation*}\delta_{k}(x) = x \frac{\mu_{k}}{\sigma^{2}} - \frac{\mu_{k}^{2}}{2\sigma^{2}} + log(\pi_{k}) \Longrightarrow  \delta_{1}(x) = \delta_{2}(x) \Leftrightarrow x = \frac{\mu_{1} + \mu_{2}}{2} + log\left(\frac{\pi_2}{\pi_{1}}\right)\frac{\sigma^{2}}{\mu_{1} - \mu_{2}}.\end{equation*}
 If the two classes are perfectly equally represented, the prior probabilities are $\pi_{1} = \pi_{2}$ and the $\log$ term gets zero. In the presence of highly skewed classes, in turn, $\pi_{1}$ and $\pi_{2}$ are different from each other. If class 1 occurs more often it holds that $\lim_{x \to 0^{+}}log(x) = -\infty \Leftrightarrow \lim_{\pi_{1} \to 1 (\pi_{2} \to 0^{+})}log(\frac{\pi_{2}}{\pi_{1}}) = -\infty$. So, the following three extreme cases for decision boundaries can be distinguished:
 \begin{align*} x = \lim_{\pi_{1} \to 1} \frac{\mu_{1} + \mu_{2}}{2} -\infty \qquad  x = \frac{\mu_{1} + \mu_{2}}{2} \text{ with } \pi_1 = \pi_2 \qquad x = \lim_{\pi_{1} \to 0^{+}} \frac{\mu_{1} + \mu_{2}}{2} -\infty \end{align*}
@@ -96,19 +96,19 @@ Hence, an imbalance of the two classes moves the decision boundary infinitely to
 
 \subsection{Analysis Methodology}
 
-\citet[p. ]{James} use bagging to reduce the variance in tree models. However, instead of taking a random subset of the entire data like in normal bagging, we use repeated subsets that show an equal distribution of the three classes. Therefore, we either take more observations from the B or C classes (oversampling) or we remove a part of the observations from the A class (undersampling). \citet[p. 83]{imbalance} outlines that both approaches have drawbacks. While oversampling increases the likelihood for overfitting since we create exact copies of a minority class, undersampling ignores potentially useful data points. To address these weaknesses, we combine over- and undersampling with bagging which results in over- and under-bagging (OU-bagging). In detail, we apply the following procedure:
+\citet[p. 316]{James} used bagging to reduce the variance in tree models. However, instead of taking a random subset of the entire data like in normal bagging, we used repeated subsets that show an equal distribution of the three classes. Therefore, we either needed to take more observations from the B or C classes (oversampling) or remove a part of the observations from the A class (undersampling). \citet[p. 83]{imbalance} outlines that both approaches have drawbacks. While oversampling increases the likelihood for overfitting since we create exact copies of a minority class, undersampling ignores potentially useful data points. To address these weaknesses, we combined over- and undersampling with bagging which results in over- and under-bagging (OU-bagging). In detail, we applied the following procedure:
 \begin{enumerate}
 \item Take a subset of the data where the three classes are balanced either with over- or undersampling
 \item Use K-Fold Cross-Validation (CV) to get cross-validated errors from this subset
 \item Repeat the entire process B times and then take the average rate of the CV-errors to get the bagged-CV-errors
 \end{enumerate}
-After we found the model with the lowest bagged-CV-error, we estimate the model B times and then we take majority vote of all the B models to classify the observation to one of the three categories.
+After we found the model with the lowest bagged-CV-error, we estimated the model B times and took a majority vote of all the B models to classify the observation to one of the three categories.
 
 \subsection{Pre-Analysis Variable Selection}
-The obvious drawback of the described methodology is that it is computationally intensive. Using all 100 variables would be accordingly difficult since we know that a boosting model with 100 variables would run for XX hours. Furthermore, some of the demographic variables are linear combinations of each other and must be excluded anyways from our analysis. For the remaining ones, we calculate the correlation to the Inspection Grade we want to predict and take the 20 covariates with the highest correlation.
+The obvious drawback of the described methodology is that it is computationally intensive. Using all 100 variables would be accordingly difficult since we know that the tuning of a boosting model with 100 variables would take many hours. Furthermore, some of the demographic variables are linear combinations of each other and must be excluded from our analysis anyway. For the remaining ones, we calculated the correlation to the Inspection Grade we wanted to predict and took the 20 covariates with the highest correlation.
 
 \subsection{Linear and Quadratic Discriminant Analysis}
-Our first method is the discriminant analysis. We combine the discussed OU-bagging technique with a variable selection approach as suggested by \citet[pp. 205 - 10]{James}. First, we created a function for \textit{Best Subset Selection} which estimates a model for all possible variable combinations. Together with OU-bagging as well as CV we would estimate a total of approximately 1 billion models per learning technique ($B \times K \times 2^{p}$ with $p = 20$, $K = 10$ and $B = 100$). The computation capacity of our machines as well as the given time constraints made this approach not feasible for us. Instead, we decided to us \textit{Forward Stepwise Selection} which requires an estimation of 190'000 models in total ($B \times K \times \frac{p(p + 1)}{2}$).\\
+Our first method is the discriminant analysis. We combined the discussed OU-bagging technique with a variable selection approach as suggested by \citet[pp. 205 - 210]{James}. First, we created a function for \textit{Best Subset Selection} which estimates a model for all possible variable combinations. Together with OU-bagging as well as CV we would have estimated a total of approximately 1 billion models per learning technique ($B \times K \times 2^{p}$ with $p = 20$, $K = 10$ and $B = 100$). The computation capacity of our machines as well as the given time constraints made this approach not feasible for us. Instead, we decided to use \textit{Forward Stepwise Selection} which requires an estimation of 190'000 models in total ($B \times K \times \frac{p(p + 1)}{2}$).\\
 \\
 \begin{figure}
 \captionof{figure}{Geographic Distribution of the inspected Shops \label{LDAQDA}} 
@@ -120,7 +120,7 @@ Our first method is the discriminant analysis. We combine the discussed OU-baggi
        \includegraphics[width=0.5\textwidth]{Plots/Plot11_QDA_Boundaries.png}
      }
 \end{figure}
-Figure~\ref{LDAQDA} presents the results from this analysis. Panel~(a) shows the bagged-CV-error of all estimated models with 1 to 20 covariates. QDA with over-sampling and 16 covariates performs best. However, the prediction error still amounts to over 50\%. When we implement the model of suggested by Panel~(a) and use it for our data, we achieve an error of 54\%. Panel~(b) illustrates the QDA decision boundaries in a bivariate setting with "shop density" and "Ethnicity White per Census Track". A relatively large amount of observations is assigned to category B which partly explains the poor prediction accuracy. The prediction matrix from Table~ref{pred-matrix} supports that assumption since a large part of A are classified as B. This reveals one of the already mentioned drawbacks of our approach because over-sampling copies B observations multiple times and therefore overweights their proportion.\\
+Figure~\ref{LDAQDA} presents the results from this analysis. Panel~(a) shows the bagged-CV-error of all estimated models with 1 to 20 covariates. QDA with over-sampling and 16 covariates performs best. However, the prediction error still amounts to over 50\%. When we implemented the model suggested by Panel~(a) and used it for our data, we achieved an error of 54\%. Panel~(b) illustrates the QDA decision boundaries in a bivariate setting with "shop density" and "Ethnicity White per Census Track". A relatively large amount of observations is assigned to category B which partly explains the poor prediction accuracy. The prediction matrix from Table~ref{pred-matrix} supports that assumption since a large part of A are classified as B. This reveals one of the already mentioned drawbacks of our approach because over-sampling copies B observations multiple times and therefore overweights their proportion.\\
 \\
 \label{pred-matrix}
 \captionof{table}{Prediction Matrices of Different Estimated Models}
@@ -166,9 +166,9 @@ C &2 & 0 & 1859 \\
 
 Next, we implemented K-Nearest Neighbor (knn). First, we tried to implement knn similar to the discriminant analysis with backward stepwise selection. However, we realized that the function only allows up to 1000 neighbors which creates an error for discrete variables with low variance.
 
-\section{Random Forest Analysis}
+\subsection{Random Forest Analysis}
 
-We decided to use the random forest to have a model with a typically good performance but relatively little tuning requirements. Additionally, the structure of the dataset according to the correlation matrix, seemed rather complex and not linear. Tree models normally outperform linear models in these situations \cite{James}[S. 314] In order to address the problem of class imbalances, the random forest model is built up on bagging mentioned above. Panel~(c) shows the results of the majority vote prediction for the oversampling. As mentioned above it is very likely to overfit and therefore implies a too good result for the current data but most likely not for future new data inputs.\\
+We decided to use the random forest analysis to have a model with a typically good performance but relatively little tuning requirements. Additionally, the structure of the dataset according to the correlation matrix, seemed rather complex and not linear. Tree models normally outperform linear models in these situations \cite{James}[S. 314] In order to address the problem of class imbalances, the random forest model is built up on the bagging theory mentioned above. Panel~(c) shows the results of the majority vote prediction for the oversampling. As mentioned above it is very likely to overfit and therefore implies a too good result for the current data but most likely not for future new data inputs.\\
 
 Although there is normally only little tuning required, the evaluation of tuning parameter is computationally very intensive due to an exponential rise of possible combinations with every new tuning parameter. Therefore we were restricted to a smaller selection of possible tuning grid and only used 40 different combinations. \\
 
@@ -194,9 +194,9 @@ The importance of the variables can be shown in figure \ref{var_importance}. The
 
 As discussed above and visible in figure \ref{ice} even the most important variables do not have a significant impact on the predictions. Thus, additional and more relevant parameters are needed in order to achieve a better performance.
 
-\section{Gradient Boosting}
+\subsection{Gradient Boosting}
 
-As a further method of tree based models we implemented extreme gradient boosting. It enables a better performance than random forest and provides more advanced tuning methods. The selected parameters have XXX different combinations which have to be evaluated. The current approach with a full hyper grid search is computationally very intensive and takes several days with an ordinary computer. Another possibility is to use a random discrete search which does not test all combinations but a sample of it with a stopping parameter. Thus this would have meant to implement another package and due to time restrictions was entirely finished.
+As a further method of tree based models we implemented extreme gradient boosting. It enables a better performance than random forest and provides more advanced tuning methods. The selected parameters have 576 different combinations which have to be evaluated. The current approach with a full hyper grid search is computationally very intensive and takes several days with an ordinary computer. Another possibility is to use a random discrete search which does not test all combinations but a sample of it with a stopping parameter. Thus this would have meant to implement another package and due to time restrictions was entirely finished.
 
 
 =======
