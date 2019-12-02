@@ -8,6 +8,8 @@ library(pdp)         # model visualization
 library(vtreat)
 library(xgboost)
 library(h2o)
+library(pdp)
+library(vip)
 
 load("data/ny_inspect_data.Rdata") #loading the data set
 ny_inspect_data = as.tibble(ny_inspect_data)
@@ -93,7 +95,6 @@ ny_data$neighbourhood_group = as.factor(ny_data$neighbourhood_group)
 length(which(is.na(ny_data[,]))) #check if any parameter contains NA values
 
 rm(res, cor, covariates, largest_corr, ny_inspect_data)
-###Random Forest----
 
 ###Model Selection---------
 
@@ -106,7 +107,7 @@ bagging_sampling <- function(df, Y, sample_size) {
     nam <- paste("subset", classes[i], sep = "")
     assign(nam, df[which(as.matrix(df[Y])== classes[i]), ])
   }
-  
+  #set up the balanced samples
   sampleA <- sample(1:nrow(subsetA), sample_size[1], replace = T)
   sampleB <- sample(1:nrow(subsetB), sample_size[2], replace = T)
   sampleC <- sample(1:nrow(subsetC), sample_size[3], replace = T)
@@ -127,111 +128,144 @@ tuneGrid <- expand.grid(
   mtry       = seq(1, 20, by = 2),  
   min.node.size  = seq(2,9,2),
   splitrule = c("gini"))
+
+
+#function to apply bagging to crossvalidated random forest
+over_under_bagging <- function(df, Y, B, sample_size, tuneGrid) {
   
+  #allocate matrix for results
+  bagging_error = as_tibble(matrix(ncol = 7, nrow = (B+1)*nrow(tuneGrid)))
   
-  
-  over_under_bagging <- function(df, Y, B, sample_size, tuneGrid) {
+  for (i in 1:B) {
     
-    #allocate matrix for results
-    bagging_error = as_tibble(matrix(ncol = 7, nrow = (B+1)*nrow(tuneGrid)))
+    rf_train = bagging_sampling(ny_data, "Inspection.Grade", sample_size) #set up sample
     
-    for (i in 1:B) {
-      
-      rf_train = bagging_sampling(ny_data, "Inspection.Grade", sample_size)
-      
-      #calculating models with CV
-      ctrl <- trainControl(method = "cv", savePredictions = "final", allowParallel = TRUE) #use parallelization to enhance computation speed
-      model_fit <- train(Inspection.Grade~., 
-                         data = rf_train, 
+    #calculating models with CV
+    ctrl <- trainControl(method = "cv", savePredictions = "final", allowParallel = TRUE) #use parallelization to enhance computation speed
+    model_fit <- train(Inspection.Grade~., 
+                       data = rf_train, 
+                       method = "ranger", #use of random forest
+                       trControl = ctrl, #set up the settings for CV
+                       tuneGrid = tuneGrid, #calculate the best model using the tuning parameters
+                       importance = "impurity") #to analyze the variable importance
+    
+    index <- seq(1, nrow(bagging_error), by = nrow(tuneGrid)) #save the results in the matrix
+    bagging_error[index[i]:(index[i+1]-1),] = model_fit$results[,]
+    
+    print(i)
+  }
+  return(bagging_error)
+}
+
+#Function Data prep for CV_errors
+mean_CV_error = function(bagging_error) {
+  
+  #calculate the mean for the different tuning combinations to evaluate
+  mean_CV_error = bagging_error
+  mean_CV_error = mean_CV_error %>% 
+    rename(mtry=V1, nodeSize = V2, splitrule = V3, Accuracy = V4, Kappa = V5) %>% 
+    mutate(splitrule = "gini") %>% 
+    select(-V6, -V7) %>% 
+    group_by(mtry, nodeSize, splitrule) %>% 
+    summarise(mean = mean(Accuracy, na.rm = TRUE)) %>% 
+    arrange(mean)
+  
+  mean_CV_error = mean_CV_error[1:nrow(mean_CV_error)-1,] #data prep
+  
+  return(mean_CV_error)
+}
+
+#Model without bagging for comparison
+
+for (i in 1:B) {
+  
+  ctrl <- trainControl(method = "cv", savePredictions = "final", allowParallel = TRUE) #use parallelization to enhance computation speed
+  without_model <- train(Inspection.Grade~., 
+                         data = ny_data, 
                          method = "ranger", #use of random forest
                          trControl = ctrl, #set up the settings for CV
                          tuneGrid = tuneGrid, #calculate the best model using the tuning parameters
                          importance = "impurity") #to analyze the variable importance
-      
-      index <- seq(1, nrow(bagging_error), by = nrow(tuneGrid)) #save the results in the matrix
-      bagging_error[index[i]:(index[i+1]-1),] = model_fit$results[,]
-      
-      print(i)
-    }
-    return(bagging_error)
-  }
-  
-  #Function Data prep for CV_errors
-  mean_CV_error = function(bagging_error) {
-    
-    mean_CV_error = bagging_error
-    mean_CV_error = mean_CV_error %>% 
-      rename(mtry=V1, nodeSize = V2, splitrule = V3, Accuracy = V4, Kappa = V5) %>% 
-      #mutate(splitrule = if_else(splitrule == 1, "gini", "extratrees")) %>% 
-      select(-V6, -V7) %>% 
-      group_by(mtry, nodeSize, splitrule) %>% 
-      summarise(mean = mean(Accuracy, na.rm = TRUE)) %>% 
-      arrange(mean)
-      
-    mean_CV_error = mean_CV_error[1:nrow(mean_CV_error)-1,]
-    
-    return(mean_CV_error)
-  }
-  
-  #Model without bagging for comparison
-  
-  for (i in 1:B) {
-    
-  without_model <- train(Inspection.Grade~., 
-                     data = ny_data, 
-                     method = "ranger", #use of random forest
-                     trControl = ctrl, #set up the settings for CV
-                     tuneGrid = tuneGrid, #calculate the best model using the tuning parameters
-                     importance = "impurity") #to analyze the variable importance
   
   bagging_error[index[i]:(index[i+1]-1),] = model_fit$results[,]
   
-  }
-  under_bagging_error <- over_under_bagging(ny_data, "Inspection.Grade", B = 10, tuneGrid = tuneGrid, sample_size = c(700,700,700))
-  over_bagging_error <- over_under_bagging(ny_data, "Inspection.Grade", B = 10, tuneGrid = tuneGrid, sample_size = c(5000,5000,5000))
-  
-  #calculating the mean errors over all estimations for under and over-sampling
-  mean_CV_error_under <- mean_CV_error(under_bagging_error)
-  mean_CV_error_over <- mean_CV_error(over_bagging_error)
-  mean_CV_error_without <- mean_CV_error(without_bagging_error)
-  
-  
-  #Graphs
-  ggplot(varImp(model_fit))
-  model_fit$times
-  ggplot(model_fit)
-  plot(model_fit)
+}
+#call the above defined function to calculate the cross validated bagging errors
+under_bagging_error <- over_under_bagging(ny_data, "Inspection.Grade", B = 10, tuneGrid = tuneGrid, sample_size = c(700,700,700))
+over_bagging_error <- over_under_bagging(ny_data, "Inspection.Grade", B = 10, tuneGrid = tuneGrid, sample_size = c(5000,5000,5000))
+
+#calculating the mean errors over all estimations for under and over-sampling
+mean_CV_error_under <- mean_CV_error(under_bagging_error)
+mean_CV_error_over <- mean_CV_error(over_bagging_error)
+mean_CV_error_without <- mean_CV_error(without_bagging_error)
 
 
-bagging1bis10 = bagging_error
+#Graphs
+ggplot(varImp(model_fit))
+model_fit$times
+ggplot(model_fit)
+plot(model_fit)
+
+
 rm(tuneGrid, ctrl, rf_train, index, i, sample_size)
 
-parameter_optimal_rf = mean_CV_error[which.max(mean_CV_error$mean),]
+#take the highest mean of accuracy to get the optimal parameter combination
+parameter_optimal_rf_under = mean_CV_error_under[which.max(mean_CV_error_under$mean),]
+parameter_optimal_rf_over = mean_CV_error_over[which.max(mean_CV_error_over$mean),]
 
-#train the optimal model, evaluated from above
-pred_matrix = matrix(nrow=sum(sample_size), ncol=B)
+
+#train the optimal model, evaluated from above with undersampling
+
+pred_matrix_under = matrix(nrow=nrow(ny_data), ncol=B)
 
 for (i in 1:B) {
   
-  
+  #creating undersampling dataset
   rf_optimal_training <- bagging_sampling(df = ny_data, Y = "Inspection.Grade", sample_size = c(700,700,700))
- 
   
-  optimal_model_rf = ranger(Inspection.Grade~.,
-                            mtry = as.numeric(parameter_optimal_rf[1]),
-                            splitrule = as.character(parameter_optimal_rf[3]),
-                            min.node.size = as.numeric(parameter_optimal_rf[2]),
-                            data = rf_optimal_training,
-                            importance = "impurity")
+  #random forest analysis with new evaluated parameter
+  optimal_model_rf_under = ranger(Inspection.Grade~.,
+                                  mtry = as.numeric(parameter_optimal_rf_under[1]),
+                                  splitrule = as.character(parameter_optimal_rf_under[3]),
+                                  min.node.size = as.numeric(parameter_optimal_rf_under[2]),
+                                  data = rf_optimal_training,
+                                  importance = "impurity",
+                                  probability = FALSE)
   
-  pred = optimal_model_rf$predictions
-  pred = predict(optimal_model_rf, data = ny_data)
-  pred_matrix[,i] = model_fit$pred$pred
+  pred_cv = optimal_model_rf_under$predictions
+  pred = predict(optimal_model_rf_under, data = ny_data)
+  pred_matrix_under[,i] = pred$predictions #saving the predictions of the new trained model
+  print(i)
 }
 
-variableImportance_plot = ggplot(optimal_model_rf$variable.importance)
 
-#function to use the majority vote in a data frame
+#train the optimal model, evaluated from above from overbagging errors
+
+pred_matrix_over = matrix(nrow=nrow(ny_data), ncol=B)
+
+for (i in 1:B) {
+  
+  #creating undersampling dataset
+  rf_optimal_training <- bagging_sampling(df = ny_data, Y = "Inspection.Grade", sample_size = c(5000,5000,5000))
+  
+  #random forest analysis with new evaluated parameter
+  optimal_model_rf_over = ranger(Inspection.Grade~.,
+                                 mtry = as.numeric(parameter_optimal_rf_over[1]),
+                                 splitrule = as.character(parameter_optimal_rf_over[3]),
+                                 min.node.size = as.numeric(parameter_optimal_rf_over[2]),
+                                 data = rf_optimal_training,
+                                 importance = "impurity",
+                                 probability = FALSE)
+  
+  pred_cv = optimal_model_rf_over$predictions
+  pred = predict(optimal_model_rf_over, data = ny_data)#saving the predictions of the new trained model
+  pred_matrix_over[,i] = pred$predictions
+  print(i)
+}
+
+#Majority vote for the predictions
+
+#function chooses the most frequent prediction per row
 chooseBestModel <- function(x) {
   tabulatedOutcomes <- table(x) 
   sortedOutcomes <- sort(tabulatedOutcomes, decreasing=TRUE)
@@ -239,43 +273,59 @@ chooseBestModel <- function(x) {
   mostCommonLabel
 }
 
-#Majority vote for the predictions
-pred_matrix_majority = as.numeric(apply(pred_matrix, 1, chooseBestModel))
+#apply majority vote to get the final predictions
+pred_matrix_majority_under = as.numeric(apply(pred_matrix_under, 1, chooseBestModel))
+pred_matrix_majority_over = as.numeric(apply(pred_matrix_over, 1, chooseBestModel))
 
-length(which(pred$predictions!=ames_test$Inspection.Grade))/nrow(ames_test)
-rf_error <- full_join(rf_under_bagging_error, rf_over_bagging_error, by)
+#data prep to have one table with all the different prediction as well as the true Y
+resultate = tibble(ny_data$Inspection.Grade, pred_matrix_majority_over, pred_matrix_majority_under)
+resultate <- resultate %>%
+  mutate(pred_matrix_majority_over = factor(pred_matrix_majority_over, levels = c(1, 2, 3), labels = c("A", "B", "C"))) %>%
+  mutate(pred_matrix_majority_under = factor(pred_matrix_majority_under, levels = c(1, 2, 3), labels = c("A", "B", "C")))
 
-
-
-# we create X-lables for the plot of the Bagged-CV Error
-covariates <- ncol(ny_data) - 1
-covariates_comb <- c()
-for (i in 1:covariates){
-  for (j in 1:choose(covariates,i)){
-    covariates_comb <- c(covariates_comb, paste(i, j, sep = "."))
-  }
-}
-model_fit$terms
-rf_error <- cbind(rf_error, covariates_comb)
+#conversion matrix for documentation as well as summary of results
+table_over = table(resultate$`ny_data$Inspection.Grade`, resultate$pred_matrix_majority_over)
+table_under = table(resultate$`ny_data$Inspection.Grade`, resultate$pred_matrix_majority_under)
 
 
-rm(i, j, covariates, covariates_comb)
-
-colnames(lda_error) <- c("Covariates", "Under_bagging_error", "Over_bagging_error", "Model")
-
-ggplot(data = lda_error, aes(x = Model, group=1)) +
-  geom_line(aes(y = Under_bagging_error), color = "Blue" ) +
-  geom_line(aes(y = Over_bagging_error), color = "Red") +
-  labs(title="Prediction Rate LDA",
-       x="Covariate Combination",
-       y = "Error Rate") +
-  theme_gray()
+#creating matrix with all bagging errors
+rf_error <- matrix(nrow= nrow(mean_CV_error_under), ncol = 3)
+rf_error[,1] <- mean_CV_error_over$mean
+rf_error[,2] <- mean_CV_error_under$mean
+rf_error[,3] <- 1:nrow(mean_CV_error_over)
 
 
+#Graphs and analytics of optimal models------
 
-ggplot(varImp(model_fit))
-ggplot(model_fit)
+#variable importance
+variableImportance_plot_under = vip(
+  object = optimal_model_rf_under,
+  feature_names = colnames(ny_data),
+  train = rf_optimal_training,
+  scale = TRUE #calculates importance relative to eachother
+)
 
+variableImportance_plot_over = vip(
+  object = optimal_model_rf_over,
+  feature_names = colnames(ny_data),
+  train = rf_optimal_training, 
+  scale = TRUE
+)
+
+#ICE plot for documentation
+ice_subway_over <- optimal_model_rf_over  %>%
+  partial(pred.var = "subway_distance", grid.resolution = 30, train = rf_optimal_training, ice = TRUE) %>%
+  autoplot(rug = TRUE, train = rf_optimal_training, alpha = .1, center = TRUE, paropts = list(.packages = "ranger")) +
+  ggtitle("over-sampling")
+
+ice_subway_under <- optimal_model_rf_under  %>%
+  partial(pred.var = "subway_distance", grid.resolution = 30, train = rf_optimal_training, ice = TRUE) %>%
+  autoplot(rug = TRUE, train = rf_optimal_training, alpha = .1, center = TRUE, paropts = list(.packages = "ranger")) +
+  ggtitle("under-sampling")
+
+gridExtra::grid.arrange(ice_subway_under, ice_subway_over, ncol = 2) #adds the two plots together in one row
+
+###Boosting-----
 
 #tuning parameter
 hyper_grid <- expand.grid(
@@ -286,7 +336,7 @@ hyper_grid <- expand.grid(
   colsample_bytree = c(.8, .9, 1),
 )
 
-
+#set up function for applying the bagging to xgb
 over_under_bagging_boosting <- function(df, Y, B, sample_size, tuneGrid) {
   
   #allocate matrix for results
@@ -294,7 +344,7 @@ over_under_bagging_boosting <- function(df, Y, B, sample_size, tuneGrid) {
   
   for (i in 1:B) {
     
-    rf_train = bagging_sampling(ny_data, "Inspection.Grade", sample_size)
+    rf_train = bagging_sampling(ny_data, "Inspection.Grade", sample_size) #set up sample
     
     #calculating models with CV
     ctrl <- trainControl(method = "cv", savePredictions = "final", allowParallel = TRUE) #use parallelization to enhance computation speed
@@ -321,42 +371,43 @@ mean_CV_error_under_boosting <- mean_CV_error(under_boosting_error)
 mean_CV_error_over_boosting <- mean_CV_error(over_boosting_error)
 
 #the evaluation of the parameters of the optimal model
-parameter_optimal_boosting = mean_CV_error[which.max(mean_CV_error$mean),]
+parameter_optimal_boosting_under = mean_CV_error_under_boosting[which.max(mean_CV_error_under_boosting$mean),]
+parameter_optimal_boosting_over = mean_CV_error_over_boosting[which.max(mean_CV_error_over_boosting$mean),]
 
 #train the optimal model, evaluated from above
 
 B = 100
 sample_size = c(700,700,700)
-pred_matrix_boosting = matrix(nrow=sum(sample_size), ncol=B)
+pred_matrix_boosting = matrix(nrow=nrow(ny_data), ncol=B)
 
-#optimal evaluated tuning parameter for xgboosting
+#optimal evaluated tuning parameter for xgboosting; value of the tuning parameter are arbitrarely due to time restrictions in calculation the 
+#hyperparameter tuning 
 params <- list(
-  eta = 0.01,
+  eta = 0.1,
   max_depth = 5,
-  min_child_weight = 5,
-  subsample = 0.65,
+  min_child_weight = 4,
+  subsample = .75,
   colsample_bytree = 1
 )
 
 #use B = 100 iterations to get a stable perdiction and apply the majority vote for the final prediction
 for (i in 1:B) {
   
-  
   boosting_optimal_training <- bagging_sampling(df = ny_data, Y = "Inspection.Grade", sample_size = c(700,700,700))
-
+  
   #calculating final model with evaluated parameters
   optimal_model_boosting  <- xgboost(
-          params = params,
-          data = boosting_optimal_training,
-          label = "Inspection.Grade",
-          nrounds = 1430,
-          objective = "multi:softprob",
-          verbose = 1
+    params = params,
+    data = boosting_optimal_training,
+    label = "Inspection.Grade",
+    nrounds = 1430,
+    objective = "multi:softprob",
+    verbose = 1
   )
-  
+  #prediction with new trained optimal boosting model
   pred = optimal_model_boosting$predictions
   pred = predict(optimal_model_boosting, data = ny_data)
-  pred_matrix_boosting[,i] = model_fit$pred$pred
+  pred_matrix_boosting[,i] = optimal_model_boosting$predictions
 }
 
 #importance of the variables used in the boosting model
@@ -365,8 +416,8 @@ xgb.plot.importance(importance_matrix, top_n = 10, measure = "Gain")
 
 #partial dependence plot to show marginal effect of one or two features on outcome
 pdp_plot <- optimal_model_boosting %>%
-  partial(pred.var = "shop_density", n.trees = 1430, grid.resolution = 100, train = boosting_optimal_training) %>%
-  autoplot(rug = TRUE, train = boosting_optimal_training) +
+  partial(pred.var = "shop_density", n.trees = 1430, grid.resolution = 100, train = rf_optimal_training,paropts = list(.packages = "xgboost")) %>%
+  autoplot(rug = TRUE, train = rf_optimal_training) +
   ggtitle("PDP")
 
 pdp_plot
@@ -374,7 +425,31 @@ pdp_plot
 
 ice_plot <- optimal_model_boosting %>%
   partial(pred.var = "shop_density", n.trees = 1430, grid.resolution = 100, train = boosting_optimal_training, ice = TRUE) %>%
-  autoplot(rug = TRUE, train = boosting_optimal_training, alpha = .1, center = TRUE) +
+  autoplot(rug = TRUE, train = boosting_optimal_training, alpha = .1, center = TRUE, paropts = list(.packages = "xgboost")) +
   ggtitle("ICE")
 
 ice_plot
+
+rm(
+  bagging_error,
+  ctrl,
+  ice_subway_over,
+  ice_subway_under,
+  mean_CV_error_over,
+  mean_CV_error_under,
+  optimal_model_rf_over,
+  optimal_model_rf_under,
+  over_bagging_error,
+  parameter_optimal_rf_over,
+  parameter_optimal_rf_under,
+  pred,
+  pred_matrix_boosting,
+  pred_matrix_majority_over,
+  pred_matrix_majority_under,
+  resultate,
+  rf_error,
+  rf_optimal_training,
+  variableImportance_plot_over,
+  variableImportance_plot_under)
+
+#########################################################################################
