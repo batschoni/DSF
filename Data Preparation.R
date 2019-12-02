@@ -476,13 +476,8 @@ data_bnb <- read.csv("data/ab_nyc_19.csv") #reading data
 longitude = as.numeric(data_bnb$longitude)
 latitude = as.numeric(data_bnb$latitude)
 Coordinates  = tibble(longitude, latitude)
-<<<<<<< HEAD
-s = shapefile("data/geolocation/ZIP_CODE_040114.shp") #read in the shapefile which contains the geo data of the different 
+s = shapefile("./data/geolocation/ZIP_CODE_040114.shp") #read in the shapefile which contains the geo data of the different 
 pts <- Coordinates                                    #ZIP Code regions in new york
-=======
-s = shapefile("./data/geolocation/ZIP_CODE_040114.shp")
-pts <- Coordinates
->>>>>>> fee48ae8fe0c4a1c2f1dda65a5fecde0ecba33ce
 pts <- pts[complete.cases(pts),]
 coordinates(pts) <- ~longitude+latitude               #transformation package specific
 proj4string(pts) <- CRS("+proj=longlat +datum=WGS84")
