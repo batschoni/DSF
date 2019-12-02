@@ -882,42 +882,39 @@ for (i in 1:B){
   Y_train <- sample[, "Inspection.Grade"]
   # Change format that it works with knn function
   Y_train <- factor(as.matrix(Y_train))
-  train_data <- train_data[, covariates]
+  train_data <- sample[, covariates]
   testing_data <- ny_data[, covariates]
   # fits the model with the bagging sample
-  model_fit <- KNN(train = train_data, test = testing_data, cl = Y_train, k = best_model_k)
-  bagged_models <- c(bagged_models, list(model_fit))
-  # predicts the values for the entire dataset
-  model_pred <- predict(model_fit, newdata = ny_data)
-  bagged_predictions[, i] <- model_pred$class
+  model_pred <- knn(train = train_data, test = testing_data, cl = Y_train, k = best_model_k)
+  bagged_predictions[, i] <- model_pred
   # fit and predicts the values for the generated plot points
-  model_fit <- qda(Inspection.Grade~shop_density + White.per.CenTrac, data = sample)
-  model_pred <- predict(model_fit, newdata = g)
-  bagged_predictions_plot[, i] <- model_pred$class
+  model_pred <- knn(train = train_data[, c("shop_density", "White.per.CenTrac")], 
+                    test = g, cl = Y_train, k = best_model_k)
+  bagged_predictions_plot[, i] <- model_pred
 }
 
 # Get Majority vote of the B bagged models
-pred_qda <- apply(bagged_predictions, 1, maj_vote)
-pred_qda <- factor(pred_qda, levels = c(1, 2, 3), labels = c("A", "B", "C"))
-pred_qda_plot <- apply(bagged_predictions_plot, 1, maj_vote)
-pred_qda_plot <- factor(pred_qda_plot, levels = c(1, 2, 3), labels = c("A", "B", "C"))
+pred_knn <- apply(bagged_predictions, 1, maj_vote)
+pred_knn <- factor(pred_knn, levels = c(1, 2, 3), labels = c("A", "B", "C"))
+pred_knn_plot <- apply(bagged_predictions_plot, 1, maj_vote)
+pred_knn_plot <- factor(pred_knn_plot, levels = c(1, 2, 3), labels = c("A", "B", "C"))
 
 # prediction error
-qda_final_error <- sum(pred_qda != ny_data$Inspection.Grade) / length(ny_data$Inspection.Grade)
+knn_final_error <- sum(pred_knn != ny_data$Inspection.Grade) / length(ny_data$Inspection.Grade)
 
 # prediction matrix
-qda_pred_matrix <- table(pred_qda, ny_data$Inspection.Grade, dnn = c("prediction", "observed"))
+knn_pred_matrix <- table(pred_knn, ny_data$Inspection.Grade, dnn = c("prediction", "observed"))
 
 # bind grid data
-grid_data <- cbind(pred_qda_plot, g)
+grid_data <- cbind(pred_knn_plot, g)
 grid_data <- as.data.frame(grid_data)
 
-Plot8 <- ggplot(data = ny_data, aes(y = shop_density, x = White.per.CenTrac)) +
-  geom_point(data = grid_data, aes(color=pred_qda_plot), alpha=0.3, size = 0.5) +
+Plot10 <- ggplot(data = ny_data, aes(y = shop_density, x = White.per.CenTrac)) +
+  geom_point(data = grid_data, aes(color=pred_knn_plot), alpha=0.3, size = 0.5) +
   geom_point(aes(color=Inspection.Grade), alpha=1)+
   #geom_contour(aes(y = ys, x = xs, z=zs), 
   #             breaks=c(0,.5))
-  labs(title="Decision Boundaries QDA",
+  labs(title="Decision Boundaries KNN",
        x="Ethnicity White per CenTrac",
        y = "Shop Density in 1km Radius",
        color = "Method") +
@@ -928,7 +925,7 @@ Plot8 <- ggplot(data = ny_data, aes(y = shop_density, x = White.per.CenTrac)) +
         axis.text=element_text(size=14),
         axis.title=element_text(size=16,face="bold"))
 
-ggsave("./plots/Plot8_QDA_Boundaries.png", plot = Plot8, width = 7, height = 4, dpi = 300)
+ggsave("./plots/Plot10_KNN_Boundaries.png", plot = Plot10, width = 7, height = 4, dpi = 300)
 
 rm(g, grid_data, r, lda_pred, resolution, xs, ys, dec_border, zs)
 
