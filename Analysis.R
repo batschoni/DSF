@@ -106,11 +106,98 @@ ggplot(data = ny_data, aes(x=Inspection.Grade)) +
 
 # LDA Model Selection----
 #########################################################################################
-forward_stepwise_selection(ny_data, "Inspection.Grade", lda, K = 10)
 
-# LDA assumes that covariates have a multivariate Gaussian distribution
-# Coefficients give the lane / plane where the prediction changes / prediction boundaries
+# Not used functions
+###
+# implements forward-stepwise-selection and K-Fold CV
+# as suggested by James et al (pp. 205 - 206)
+# First we wanted to estimate all possible model combinations
+# But it took too long since we use a relatively high number of covariates
+best_subset_selection <- function(df_train, df_test, Y, FUN){
+  # all covariates
+  col_names <- colnames(df_train)
+  col_names <- col_names[which(col_names != Y)]
+  comb_nrs <- 2^length(col_names) - 1
+  var_comb <- matrix(data = NA, ncol = 1, nrow = comb_nrs)
+  row_names <- c()
+  row_nr <- 1
+  comb_size <- 0
+  iterations <- length(col_names)
+  for(i in 1:iterations){
+    comb_size <- comb_size + ncol(combn(col_names, i))
+    row_names <- c(row_names, combn(col_names, i, function(x) paste(x, collapse='\n')))
+    var_comb[row_nr:comb_size, 1] <- combn(col_names, i, function(x) paste(x, collapse=' + '))
+    row_nr <- row_nr + ncol(combn(col_names, i))
+  }
+  # add numbers to row labels
+  row_names <- paste(1:length(row_names), sep = " ", row_names)
+  error_rate <- matrix(data = NA, ncol = 1, nrow = comb_nrs)
+  rownames(error_rate) <- row_names
+  for(i in 1:comb_nrs){
+    myformula <- paste( Y, '~', var_comb[i, 1] )
+    myformula <- as.formula(myformula)
+    model_fit <- FUN(myformula, data = df_train)
+    model_pred <- predict(model_fit, df_test)
+    # If model = discriminant analysis
+    if (length(model_pred) == 3){
+      model_pred <- model_pred$class 
+    }
+    correct_pred <- which(model_pred != as.matrix(df_test[Y]))
+    error <- length(correct_pred) / nrow(df_test[Y])
+    error_rate[i, 1] <- error
+  }
+  return(error_rate)
+}
 
+# Implements K-Fold Cross Validation (not integrated in a function)
+k_fold_CV <- function(df, Y, K, FUN){
+  fold <- round(nrow(df) / K)
+  cross_val_err = matrix(data = NA, nrow = 2^(ncol(df)-1) - 1, ncol = K)
+  for(i in 1:K){
+    train_data <- df[-c((1+(i-1)*fold):(i*fold)),]
+    testing_data <- df[(1+(i-1)*fold):(i*fold),]
+    err <- model_selection(train_data, testing_data, Y, FUN)
+    cross_val_err[,i] <- err[, 1]
+  }
+  cross_val_err <- as.tibble(apply(cross_val_err, 1, mean, na.rm=TRUE))
+  rownames(cross_val_err) = rownames(err)
+  return(cross_val_err)
+}
+
+# Implements over- and under-bagging with Out-of-bag errors
+# We regonized that results with OOB errors are misleading since
+# every testing set would be highly imbalanced
+over_under_bagging <- function(df, Y, B, sample_size, FUN){
+  set.seed(123)
+  classes <- as.matrix(unique(df[Y]))
+  classes <- sort(classes)
+  for(i in 1:length(classes)){
+    nam <- paste("subset", classes[i], sep = "")
+    assign(nam, df[which(as.matrix(df[Y])== classes[i]), ])
+  }
+  oob_err = matrix(data = NA, nrow = 2^(ncol(df) - 1) - 1, ncol = B)
+  for(i in 1:B){
+    sampleA <- sample(1:nrow(subsetA), sample_size[1], replace = T)
+    sampleB <- sample(1:nrow(subsetB), sample_size[2], replace = T)
+    sampleC <- sample(1:nrow(subsetC), sample_size[3], replace = T)
+    train_data <- rbind(subsetA[sampleA, ], subsetB[sampleB, ], subsetC[sampleC, ])
+    testing_data <- subsetA[-(sampleA),]
+    testing_data <- testing_data[1:(sample_size[1]/2), ]
+    testing_data <- rbind(testing_data,
+                          subsetB[-(sampleB), ], 
+                          subsetC[-(sampleC), ])
+    err <- model_selection(train_data, testing_data, Y, FUN)
+    oob_err[,i] <- err
+  }
+  oob_err_final <- as.tibble(apply(oob_err, 1, mean, na.rm=TRUE))
+  oob_err_final <- cbind(rownames(err), oob_err_final)
+  return(oob_err_final)
+}
+###
+
+# implements forward-stepwise-selection and K-Fold CV
+# as suggested by James et al (pp. 207 - 208)
+# takes a df, the name of Y as character, the model used as well as the number of folds
 forward_stepwise_selection <- function(df, Y, FUN, K = 10){
   # All covariate names
   covariates <- colnames(df)
@@ -167,115 +254,37 @@ forward_stepwise_selection <- function(df, Y, FUN, K = 10){
   return(model_errors)
 }
 
-best_subset_selection <- function(df_train, df_test, Y, FUN){
-  # all covariates
-  col_names <- colnames(df_train)
-  col_names <- col_names[which(col_names != Y)]
-  comb_nrs <- 2^length(col_names) - 1
-  var_comb <- matrix(data = NA, ncol = 1, nrow = comb_nrs)
-  row_names <- c()
-  row_nr <- 1
-  comb_size <- 0
-  iterations <- length(col_names)
-  for(i in 1:iterations){
-    comb_size <- comb_size + ncol(combn(col_names, i))
-    row_names <- c(row_names, combn(col_names, i, function(x) paste(x, collapse='\n')))
-    var_comb[row_nr:comb_size, 1] <- combn(col_names, i, function(x) paste(x, collapse=' + '))
-    row_nr <- row_nr + ncol(combn(col_names, i))
-  }
-  # add numbers to row labels
-  row_names <- paste(1:length(row_names), sep = " ", row_names)
-  error_rate <- matrix(data = NA, ncol = 1, nrow = comb_nrs)
-  rownames(error_rate) <- row_names
-  for(i in 1:comb_nrs){
-    myformula <- paste( Y, '~', var_comb[i, 1] )
-    myformula <- as.formula(myformula)
-    model_fit <- FUN(myformula, data = df_train)
-    model_pred <- predict(model_fit, df_test)
-    # If model = discriminant analysis
-    if (length(model_pred) == 3){
-      model_pred <- model_pred$class 
-    }
-    correct_pred <- which(model_pred != as.matrix(df_test[Y]))
-    error <- length(correct_pred) / nrow(df_test[Y])
-    error_rate[i, 1] <- error
-  }
-  return(error_rate)
-}
-
-# Implements K-Fold Cross Validation
-# Takes a dataframe, the Y variable as charakter and the number of fold K
-k_fold_CV <- function(df, Y, K, FUN){
-  fold <- round(nrow(df) / K)
-  cross_val_err = matrix(data = NA, nrow = 2^(ncol(df)-1) - 1, ncol = K)
-  for(i in 1:K){
-    train_data <- df[-c((1+(i-1)*fold):(i*fold)),]
-    testing_data <- df[(1+(i-1)*fold):(i*fold),]
-    err <- model_selection(train_data, testing_data, Y, FUN)
-    cross_val_err[,i] <- err[, 1]
-  }
-  cross_val_err <- as.tibble(apply(cross_val_err, 1, mean, na.rm=TRUE))
-  rownames(cross_val_err) = rownames(err)
-  return(cross_val_err)
-}
-
 # Implement over- and underbagging with CV Errors
-# Takes a dataframe, the Y variable as charakter, the number of bagged models B as well as
-# as well as the number of each class from the original df
+# Takes a df, the Y variable as character, the number of bagged models B as well as
+# as well as the number of each class from the original df and the model used
 over_under_bagging <- function(df, Y, B, sample_size, FUN){
   set.seed(123)
+  # all classes of Y
   classes <- as.matrix(unique(df[Y]))
   classes <- sort(classes)
   for(i in 1:length(classes)){
+    # Create a subset variable of each class
     nam <- paste("subset", classes[i], sep = "")
     assign(nam, df[which(as.matrix(df[Y])== classes[i]), ])
   }
   Bag_err = matrix(data = NA, nrow = ncol(df) - 1, ncol = B)
   for(i in 1:B){
+    # draw a random subset of each class according to sample_size
     sampleA <- sample(1:nrow(subsetA), sample_size[1], replace = T)
     sampleB <- sample(1:nrow(subsetB), sample_size[2], replace = T)
     sampleC <- sample(1:nrow(subsetC), sample_size[3], replace = T)
+    # bind the sample to baggin data
     bagging_data <- rbind(subsetA[sampleA, ], subsetB[sampleB, ], subsetC[sampleC, ])
     # randomly rearrange
     bagging_data <- bagging_data[sample(1:sum(sample_size), replace = FALSE),]
+    # CV and forward_stepwise_selection
     err <- forward_stepwise_selection(bagging_data, Y, FUN)
     Bag_err[,i] <- as.matrix(err[, 2])
   }
+  # Take average of bagged-CV-Erros
   Bag_err_final <- as.tibble(apply(Bag_err, 1, mean, na.rm=TRUE))
   Bag_err_final <- cbind(err[, 1], Bag_err_final)
   return(Bag_err_final)
-}
-
-# Implement over- and under-bagging with OOB Errors
-# Takes a dataframe, the Y variable as charakter, the number of bagged models B as well as
-# as well as the number of each class from the original df
-over_under_bagging <- function(df, Y, B, sample_size, FUN){
-  set.seed(123)
-  classes <- as.matrix(unique(df[Y]))
-  classes <- sort(classes)
-  for(i in 1:length(classes)){
-    nam <- paste("subset", classes[i], sep = "")
-    assign(nam, df[which(as.matrix(df[Y])== classes[i]), ])
-  }
-  oob_err = matrix(data = NA, nrow = 2^(ncol(df) - 1) - 1, ncol = B)
-  for(i in 1:B){
-    sampleA <- sample(1:nrow(subsetA), sample_size[1], replace = T)
-    sampleB <- sample(1:nrow(subsetB), sample_size[2], replace = T)
-    sampleC <- sample(1:nrow(subsetC), sample_size[3], replace = T)
-    train_data <- rbind(subsetA[sampleA, ], subsetB[sampleB, ], subsetC[sampleC, ])
-    testing_data <- subsetA[-(sampleA),]
-    testing_data <- testing_data[1:(sample_size[1]/2), ]
-    testing_data <- rbind(testing_data,
-                          subsetB[-(sampleB), ], 
-                          subsetC[-(sampleC), ])
-    err <- model_selection(train_data, testing_data, Y, FUN)
-    oob_err[,i] <- err
-  }
-  oob_err_final <- as.tibble(apply(oob_err, 1, mean, na.rm=TRUE))
-  oob_err_final <- cbind(rownames(err), oob_err_final)
-  #oob_err_final <- as.matrix(apply(oob_err, 1, mean, na.rm=TRUE))
-  #rownames(oob_err_final) <-  rownames(err)
-  return(oob_err_final)
 }
 
 # implement LDA with under-bagging
@@ -284,6 +293,7 @@ lda_under_bagging_error <- over_under_bagging(ny_data,
                                               B = 100,
                                               sample_size = c(700, 700, 700),
                                               FUN = lda)
+save(lda_under_bagging_error, file = "./Results/lda_under_error.RData")
 
 # implement LDA with over-bagging
 lda_over_bagging_error <- over_under_bagging(ny_data,
@@ -291,35 +301,75 @@ lda_over_bagging_error <- over_under_bagging(ny_data,
                                              B = 100,
                                              sample_size = c(5000, 5000, 5000),
                                              FUN = lda)
+save(lda_over_bagging_error, file = "./Results/lda_over_error.RData")
 
-lda_error <- full_join(lda_under_bagging_error, lda_over_bagging_error, by = "rownames(err)")
+# Implementation with imbalanced data
+# (to show why it is an issue
+lda_imbal_error <- forward_stepwise_selection(ny_data,
+                                                  Y = "Inspection.Grade",
+                                                  FUN = lda,
+                                                  K = 10)
+save(lda_imbal_error, file = "./Results/lda_imbal_error.RData")
 
-# we create X-lables for the plot of the Bagged-CV Error
-covariates <- ncol(ny_data) - 1
-covariates_comb <- c()
-for (i in 1:covariates){
-  for (j in 1:choose(covariates,i)){
-    covariates_comb <- c(covariates_comb, paste(i, j, sep = "."))
-  }
+# Implementation without bagging
+# (to show why it is necessary)
+# 2 balanced subsets
+for(i in 1:2){
+  # Create subsets of each class
+  sampleA <- ny_data[which(ny_data$Inspection.Grade == "A") ,]
+  sampleA <- sampleA[sample(1:nrow(sampleA), 700, replace = T), ]
+  sampleB <- ny_data[which(ny_data$Inspection.Grade == "B") ,]
+  sampleB <- sampleB[sample(1:nrow(sampleB), 700, replace = T), ]
+  sampleC <- ny_data[which(ny_data$Inspection.Grade == "C") ,]
+  sampleC <- sampleC[sample(1:nrow(sampleC), 700, replace = T), ]
+  bagging_data <- rbind(sampleA, sampleB, sampleC)
+  # randomly rearrange data
+  bagging_data <- bagging_data[sample(1:2100, replace = FALSE),]
+  # Get errors for each bagging_set
+  nam = paste("lda_NO_bagging_error", i, sep = "_")
+  assign(nam, forward_stepwise_selection(bagging_data,
+                                                     Y = "Inspection.Grade",
+                                                     FUN = lda,
+                                                     K = 10))
 }
-lda_error <- cbind(lda_error, covariates_comb)
 
-rm(i, j, covariates, covariates_comb)
+save(lda_NO_bagging_error, file = "./Results/lda_NO_error.RData")
 
-colnames(lda_error) <- c("Covariates", "Under_bagging_error", "Over_bagging_error", "Model")
+# We stored the errors because it takes long to run
+laod("./Results/lda_under_error.RData")
+load("./Results/lda_over_error.RData")
+load("./Results/lda_NO_error.RData")
 
-ggplot(data = lda_error, aes(x = Model, group=1)) +
-  geom_line(aes(y = Under_bagging_error), color = "Blue" ) +
-  geom_line(aes(y = Over_bagging_error), color = "Red") +
+lda_performance <- as.tibble(cbind(Nr_Covariates = 1:(ncol(ny_data) - 1),
+                                   lda_under_bagging_error = lda_under_bagging_error[, 2],
+                                   lda_over_bagging_error =lda_over_bagging_error[, 2],
+                                   lda_NO_bagging_error_1 = lda_NO_bagging_error_1[, 2],
+                                   lda_NO_bagging_error_2 = lda_NO_bagging_error_2[, 2],
+                                   lda_imbal_error = lda_imbal_error[, 2]))
+
+# reshap to long format (for ggplot2)
+lda_performance <- lda_performance %>%
+  gather(method, error, c(lda_under_bagging_error,
+                          lda_over_bagging_error,
+                          lda_NO_bagging_error,
+                          lda_imbal_error))
+
+# Create Error plot
+ggplot(data = lda_performance) +
+  geom_line(aes(x = Nr_Covariates, y = error, colour=method)) +
+  geom_point(aes(x = Nr_Covariates, y = error, colour=method))
   labs(title="Prediction Rate LDA",
-       x="Covariate Combination",
+       x="Number of Covariats",
        y = "Error Rate") +
+  theme(legend.position="right") +
+  #scale_color_manual(labels = c("No Bagging", "Over-Bagging", "Under-Bagging"), 
+  #                   values = c("green", "blue", "red")) +
   theme_gray()
 
 save(lda_error, file = "./Results/lda_error.RData")
 
 rm(lda_over_bagging_error, lda_under_bagging_error)
-
+rm(i, j, covariates, covariates_comb)
 #########################################################################################
 
 # LDA Estimate Selected Model----
@@ -706,7 +756,6 @@ ggplot(data = lda_error, aes(x = Model, group=1)) +
        y = "Error Rate") +
   theme_gray()
 
-# Lowest OOB Error is achievd wih under-bagging and the variables count + number_of_reviews
 
 rm(model_selection, over_under_bagging, lda_over_bagging_error, lda_under_bagging_error)
 
