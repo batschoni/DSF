@@ -84,10 +84,8 @@ In order to acquire additional data on the location of the shops, we integrated 
 \section{Data Analysis}
 
 \subsection{The Class Imbalance Problem}\label{Imbalance Problem}
-Closer scrutiny of Figure~\ref{map1} sheds light on the extremely imbalanced distribution of the original data. In fact, the rating A contributes to 64\% on city level while B and C are only represented to 9\% and 27\% respectively. This differences in the occurrence has a large impact on the prediction capabilities of a model. The univariate linear discriminant analysis (LDA) illustrates the issue. The LDA decision rule is
-\begin{equation*}\delta_{k}(x) = x \frac{\mu_{k}}{\sigma^{2}} - \frac{\mu_{k}^{2}}{2\sigma^{2}} + log(\pi_{k})\end{equation*}
-with the decision boundary for two classes equal to
-\begin{equation*}\delta_{1}(x) = \delta_{2}(x) \Leftrightarrow x = \frac{\mu_{1} + \mu_{2}}{2} + log\left(\frac{\pi_2}{\pi_{1}}\right)\frac{\sigma^{2}}{\mu_{1} - \mu_{2}}.\end{equation*}
+Closer scrutiny of Figure~\ref{map1} sheds light on the extremely imbalanced distribution of the original data. In fact, the rating A contributes to 64\% on city level while B and C are only represented to 9\% and 27\% respectively. This differences in the occurrence has a large impact on the prediction capabilities of a model. The univariate linear discriminant analysis (LDA) illustrates the issue. The LDA decision rule and boundaries are
+\begin{equation*}\delta_{k}(x) = x \frac{\mu_{k}}{\sigma^{2}} - \frac{\mu_{k}^{2}}{2\sigma^{2}} + log(\pi_{k}) \Longrightarrow  \delta_{1}(x) = \delta_{2}(x) \Leftrightarrow x = \frac{\mu_{1} + \mu_{2}}{2} + log\left(\frac{\pi_2}{\pi_{1}}\right)\frac{\sigma^{2}}{\mu_{1} - \mu_{2}}.\end{equation*}
 If the two classes are perfectly equally represented, the prior probabilities are $\pi_{1} = \pi_{2}$ and the $\log$ term gets zero. In the presence of highly skewed classes, in turn, $\pi_{1}$ and $\pi_{2}$ are different from each other. If class 1 occurs more often it holds that $\lim_{x \to 0^{+}}log(x) = -\infty \Leftrightarrow \lim_{\pi_{1} \to 1 (\pi_{2} \to 0^{+})}log(\frac{\pi_{2}}{\pi_{1}}) = -\infty$. So, the following three extreme cases for decision boundaries can be distinguished:
 \begin{align*} x = \lim_{\pi_{1} \to 1} \frac{\mu_{1} + \mu_{2}}{2} -\infty \qquad  x = \frac{\mu_{1} + \mu_{2}}{2} \text{ with } \pi_1 = \pi_2 \qquad x = \lim_{\pi_{1} \to 0^{+}} \frac{\mu_{1} + \mu_{2}}{2} -\infty \end{align*}
 Hence, an imbalance of the two classes moves the decision boundary infinitely to the right or to the left respectively. As a consequence, the model will always predict the class that is heavily overrepresented and ignore the others. The methodology presented in the next chapter will exactly address this issue and improve the prediction accuracy of inspection grades B and C.
@@ -108,7 +106,60 @@ The obvious drawback of the described methodology is that it is computationally 
 \subsection{Linear and Quadratic Discriminant Analysis}
 Our first method is the discriminant analysis. We combine the discussed OU-bagging technique with a variable selection approach as suggested by \citet[pp. 205 - 10]{James}. First, we created a function for \textit{Best Subset Selection} which estimates a model for all possible variable combinations. Together with OU-bagging as well as CV we would estimate a total of approximately 1 billion models per learning technique ($B \times K \times 2^{p}$ with $p = 20$, $K = 10$ and $B = 100$). The computation capacity of our machines as well as the given time constraints made this approach not feasible for us. Instead, we decided to us \textit{Forward Stepwise Selection} which requires an estimation of 190'000 models in total ($B \times K \times \frac{p(p + 1)}{2}$).\\
 \\
+\begin{figure}
+\captionof{figure}{Geographic Distribution of the inspected Shops \label{LDAQDA}} 
+\subfloat[LDA vs QDA Errors]{%
+       \includegraphics[width=0.5\textwidth]{Plots/Plot10_LDA_QDA_Error.png}
+     }
+     \hfill
+     \subfloat[Decision Boundaries QDA]{%
+       \includegraphics[width=0.5\textwidth]{Plots/Plot11_QDA_Boundaries.png}
+     }
+\end{figure}
+Figure~\ref{LDAQDA} presents the results from this analysis. Panel~(a) shows the bagged-CV-error of all estimated models with 1 to 20 covariates. QDA with over-sampling and 16 covariates performs best. However, the prediction error still amounts to over 50\%. When we implement the model of suggested by Panel~(a) and use it for our data, we achieve an error of 54\%. Panel~(b) illustrates the QDA decision boundaries in a bivariate setting with "shop density" and "Ethnicity White per Census Track". A relatively large amount of observations is assigned to category B which partly explains the poor prediction accuracy. The prediction matrix from Table~ref{pred-matrix} supports that assumption since a large part of A are classified as B. This reveals one of the already mentioned drawbacks of our approach because over-sampling copies B observations multiple times and therefore overweights their proportion.\\
+\\
+\label{pred-matrix}
+\captionof{table}{Prediction Matrices of Different Estimated Models}
+\begin{center}
+\begin{small}
+\begin{tabular}{ l | c c c}
+\multicolumn{4}{c}{QDA} \\
+\hline
+Obs / \\ Pred & A & B &C \\
+\hline
+A &2839 & 462 & 1164 \\
+B &1260 & 173 & 594 \\
+C &228 & 26 & 103 \\
+\hline
+\end{tabular}
+\quad
+\begin{tabular}{ l | c c c}
+\multicolumn{4}{c}{QDA} \\
+\hline
+Obs / \\ Pred & A & B &C \\
+\hline
+A &2839 & 462 & 1164 \\
+B &1260 & 173 & 594 \\
+C &228 & 26 & 103 \\
+\hline
+\end{tabular}
+\qquad
+\begin{tabular}{ l | c c c}
+\multicolumn{4}{c}{QDA} \\
+\hline
+Obs / \\ Pred & A & B &C \\
+\hline
+A &2839 & 462 & 1164 \\
+B &1260 & 173 & 594 \\
+C &228 & 26 & 103 \\
+\hline
+\end{tabular}
+\end{small}
+\end{center}
 
+\subsection{K-Nearest Neighbor}
+
+Next, we implemented K-Nearest Neighbor (knn). First, we tried to implement knn similar to the discriminant analysis with backward stepwise selection. However, we realized that the function only allows up to 1000 neighbors which creates an error for discrete variables with low variance.
 
 \section{Conclusion}
 --> Wrong predictors
