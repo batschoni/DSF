@@ -6,6 +6,10 @@
 # install.packages("raster")
 # install.packages("rgdal")
 # install.packages("gridExtra")
+# install.packages("RSelenium")
+# install.packages("rvest")
+# install.packages("readr")
+# install.packages("gender")
 
 library(tidyverse)
 library(ggmap) # to get coordinates from a address
@@ -14,6 +18,12 @@ register_google(key = "") # the service is free but requires email registration 
 library(rgdal)
 library(dplyr)
 library(raster) # for shapefile
+library(RSelenium) # Web Scraping
+library(rvest) # # Web Scraping
+library(readr)
+library(gender)
+
+rm(list = ls())
 
 #########################################################################################
 
@@ -188,10 +198,92 @@ rm(distances, i, inspect_grade, lat, lon, rating_closest_neighb, shop_density, n
 save(inspect_data, file = "./data/inspect_data.RData")
 #########################################################################################
 
+# Web Scraping for Google Ratings----####################################################
+
+# start the Selenium server
+rD <- rsDriver(verbose = FALSE, browser = "firefox")
+
+#set the xPaths
+xPath = "/html/body/div[6]/div[3]/div[10]/div[1]/div[3]/div/div[1]/div/div[1]/div/div[4]/div/div/span[1]"
+xPath2 = "/html/body/div[6]/div[3]/div[10]/div[1]/div[3]/div/div[1]/div/div[1]/div/div[1]/div[2]/div[2]/div[2]/div/div/span[1]"
+x_Path_rev_number = "/html/body/div[6]/div[3]/div[10]/div[1]/div[3]/div/div[1]/div/div[1]/div/div[4]/div/div/span[2]/span/a/span"
+x_Path_rev_number2 = "/html/body/div[6]/div[3]/div[10]/div[1]/div[3]/div/div[1]/div/div[1]/div/div[1]/div[2]/div[2]/div[2]/div/div/span[2]/span/a/span"
+
+# assign the client to a new variable, visit a webpage
+myclient <- rD$client
+
+#prepare data for scraper
+scraping_parameter = inspect_data %>%
+  dplyr::select(Trade.Name, City)
+scraping_parameter = unite(scraping_parameter, "searching", Trade.Name:City, remove = FALSE, sep = " ")
+scraping_p_vector = as.factor(pull(scraping_parameter, searching))
+
+results_scraping = select(scraping_parameter, -searching)
+results_scraping = results_scraping %>%
+  mutate(Reviews = rep(1, length(scraping_p_vector)), Number_of_Reviews = rep(1, length(scraping_p_vector)))
+
+#defining "a" for filtering purpose in for-loop
+a <- character(0)
+
+#scraping loop
+for (i in 1:length(scraping_p_vector)) {
+  print(i)
+  myclient$navigate("http://www.google.com/ncr")
+  Sys.sleep(1)
+  webElem <- myclient$findElement('xpath', "//input[@name='q']") #select typing element
+  
+  webElem$sendKeysToElement(list(scraping_p_vector[i], key = "enter")) #enter the respective adress and trade name
+  Sys.sleep(2)
+  html_doc = read_html(myclient$getPageSource()[[1]]) #download the page content
+  link_nodes = html_nodes(html_doc, xpath = xPath)
+  link_nodes_number = html_nodes(html_doc, xpath = x_Path_rev_number)
+  link_nodes2 = html_nodes(html_doc, xpath = xPath2)
+  link_nodes_number2 = html_nodes(html_doc, xpath = x_Path_rev_number2)
+  
+  if (!identical(a, html_text(html_nodes(link_nodes2, xpath = xPath2)))){
+    
+    results_scraping[i,3] = html_text(html_nodes(link_nodes2, xpath = xPath2)) #filter the review data out of the html document
+    results_scraping[i,4] = html_text(html_nodes(link_nodes_number2, xpath = x_Path_rev_number2))
+    Sys.sleep(1)
+    print("review found")
+    
+  } else if (!identical(a, html_text(html_nodes(link_nodes, xpath = xPath)))) {
+    
+    results_scraping[i,3] = html_text(html_nodes(link_nodes, xpath = xPath)) #filter the review data out of the html document
+    results_scraping[i,4] = html_text(html_nodes(link_nodes_number, xpath = x_Path_rev_number))
+    Sys.sleep(1)
+    print("review found")
+    
+    
+  } else {
+    results_scraping[i,3] = 0
+    results_scraping[i,4] = 0
+    Sys.sleep(1)
+    
+  }
+}
+
+#Cleaning the scraped data
+#removes "google reviews" string +  converts to numeric
+results_scraping[,4] = as.numeric(str_remove(results_scraping[,4], "Google review" ))
+results_scraping[,3] = as.numeric(results_scraping[,3])
+results_scraping$Number_of_Reviews = substr(results_scraping$Number_of_Reviews,1,nchar(results_scraping$Number_of_Reviews)-14)
+results_scraping$Number_of_Reviews[which(results_scraping$Number_of_Reviews == "")] = 0
+results_scraping$Number_of_Reviews = as.numeric(str_trim(str_remove_all(results_scraping$Number_of_Reviews, "’")))
+
+#Saving the Review-Data in csv
+write.csv(results_scraping, file="data/results_scraping_final.csv")
+
+# close the Selenium server
+myclient$close()
+rD$server$stop()
+
+#########################################################################################
+
 # Add Google Ratings----#################################################################
 
-# Load Google ratings from web scraping
-load("data/results_scraping_final")
+# Load Google ratings resulted from web scraping
+load("data/results_scraping_final.csv")
 google_ratings <-  data
 google_ratings <- google_ratings %>%
   dplyr::select(-X)
@@ -227,7 +319,126 @@ save(ny_inspect_data, file = "./data/ny_inspect_data.RData")
 
 #########################################################################################
 
-# Add Demographic Information----########################################################
+# Prepare Demographic Data----###########################################################
+
+# Start with raw inspection data
+load("./data/inspect_data_original.RData")
+inspections <- inspect_data
+inspections <- as_tibble(inspections)
+inspectionsSave <- inspections
+x <- length(unique(inspections$County))
+
+# Experimenting with dem. Datasets & modifying them
+nycdBlockLoc <- read.csv("./data/nycd_census_block_loc.csv")
+nycdBlockLoc <- as_tibble(nycdBlockLoc)
+nycdCen <- read.csv("./data/nycd_nyc_census_tracts.csv")
+nycdCen <- as_tibble(nycdCen)
+
+# 2017 Cesuns data on census tract level
+# taken from: https://www.kaggle.com/muonneutrino/us-census-demographic-data
+us17Cen <- read_csv("./data/K_us-census-demographic-data/acs2017_census_tract_data.csv")
+us17Cen <- as_tibble(us17Cen)
+ny17Cen <- filter(us17Cen, State == "New York")
+#not necessary to add second category, since dataset strictly selected in either male or female
+ny17Cen <- mutate(ny17Cen, percentageFemale = (TotalPop - Men)/TotalPop)
+
+# 2017 Cesuns data on county level
+# taken from: https://www.kaggle.com/muonneutrino/us-census-demographic-data
+us17county <- read.csv("./data/K_us-census-demographic-data/acs2017_county_data.csv")
+us17county <- as_tibble(us17county)
+ny17county <- filter(us17county, State == "New York")
+#not necessary to add second category, since dataset strictly selected in either male or female
+ny17county <- mutate(ny17county,percentageFemale = (TotalPop - Men)/TotalPop)
+
+ny17countyNames <- names(ny17county)
+ny17countyNames <- paste(ny17countyNames, "per County")
+ny17county <- setNames(ny17county, ny17countyNames)
+
+#Merging inspections with ny17county
+class(inspections)==class(ny17county)
+class(ny17county$`County per County`)
+ny17county[,"County per County"] <- str_remove(ny17county$`County per County`, " County")
+inspectionsCounty <- merge(inspections, ny17county, by.x = "County", by.y = "County per County")
+
+# There is no column so far to merge our data with ny17Cen
+# To get one, we first create a third dataframe AddTrac, 
+# that contains the data of both the Addresses as well as the corresponding Census Tract IDs
+# getting Data from official geocoding services
+# https://geocoding.geo.census.gov/geocoder/geographies/addressbatch?form
+
+geocoderIn <- inspections[ ,c("Street", "City", "State.Code", "Zip.Code")]
+geocoderIn1 <- geocoderIn[1:9000, ]
+write.csv(geocoderIn1, "geocoderIn1.csv")
+geocoderIn2 <- geocoderIn[9001:18999, ]
+write.csv(geocoderIn2, "geocoderIn2.csv")
+geocoderIn3 <- geocoderIn[19000:nrow(geocoderIn), ]
+write.csv(geocoderIn3, "geocoderIn3.csv")
+geocoderInTest <- geocoderIn[1:10, ]
+write.csv(geocoderInTest, "geocoderInTest.csv")
+
+
+geoOut1 <- read.csv("./data/geoOut1.csv", skip = 1)
+geoOut2 <- read.csv("./data/geoOut2.csv", skip = 1)
+geoOut3 <- read.csv("./data/geoOut3.csv", skip = 1)
+line1geo <- as.vector(names(geoOut1))
+line2geo <- names(geoOut2)
+line3geo <- names(geoOut3)
+names(geoOut1) <- c(1:ncol(geoOut1))
+names(geoOut2) <- c(1:ncol(geoOut2))
+names(geoOut3) <- c(1:ncol(geoOut3))
+AddTrac <- rbind(geoOut1, geoOut2,geoOut3)
+CC <- complete.cases(AddTrac$`10`)
+AddTrac <- AddTrac[CC, ]
+
+#Since the TractId geocode contains placeholder zeros, 
+#which are not displayed in the batch goecoding output, those zeros have to be added, to make merging possible
+f1 = function(x){
+  if(nchar(x) == 1){paste("00", x, sep = "")}
+  else if (nchar(x) == 2){paste("0", x, sep = "")}
+  else {paste(x, "", sep = "")}
+}
+
+f2 = function(x){
+  if(nchar(x) == 3){paste("000", x, sep = "")}
+  else if (nchar(x) == 4){paste( "00",x, sep = "")}
+  else if (nchar(x) == 5){paste( "0",x, sep = "")}
+  else {paste(x, "", sep = "")}
+}
+
+AddTracTest <- AddTrac[1:100,]
+fT <- function(x){paste(x, "0", sep = "")}
+test <- lapply(AddTracTest$`10`, fT)   
+AddTracTest$`10` <- lapply(AddTracTest$`10`, f1)
+AddTrac$`10` <- lapply(AddTrac$`10`, f1)
+AddTrac$`11` <- lapply(AddTrac$`11`, f2)
+
+
+AddTrac <- unite(AddTrac, TractId, c("9","10","11"), sep = "")
+colnames(AddTrac)[1:2] <- c("Numbers","Address")
+AddTrac <- AddTrac[,c("Address","TractId")]
+AddTrac <- AddTrac %>% distinct(Address, .keep_all = TRUE)
+
+# Match AddTrac with Inspections to have the TractId numbers included in the Inspections Dataframe
+inspections <- inspectionsSave
+inspections$County <- toupper(inspections$County)
+
+inspections <- unite(inspections, Address , c(Street, City, State.Code, Zip.Code), sep = ", ", remove = FALSE)
+inspectionsTrac <- merge(inspections, AddTrac, by = "Address")
+
+#Match InspectionsTrac with democraphic Data by Census data per census tract
+inspectionsCen <- merge(inspectionsTrac, ny17Cen, by.x = "TractId", by.y = "TractId per CenTrac")
+
+# Match all demographic data
+ny17county$`County per County` <- toupper(ny17county$`County per County`)
+inspectionsDem <- merge(inspectionsCen, ny17county, by.x = "County", by.y = "County per County")
+
+# Export data
+write.csv(inspectionsDem, file = gzfile("./data/inspectionsDem.cvs.gz"))
+
+
+#########################################################################################
+
+# Add Demographic Data----###############################################################
 
 demographic_data <- read.csv("./data/inspectionsDem.cvs.gz")
 # demographic data with unique addresses
