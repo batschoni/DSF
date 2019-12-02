@@ -19,11 +19,11 @@ library(dplyr)
 load("~/GitHub/DSF/data/ny_inspect_data.RData")
 #load("~/GitHub/DSF/data/ny_inspect_data2.RData")
 ny_inspect_data_save <- ny_inspect_data
-#CC <- complete.cases(ny_inspect_data$Inspection.Grade)
-#ny_inspect_dat <- ny_inspect_data[CC,]
-#ny_inspect_dat <- na.omit(ny_inspect_dat)
+CC <- complete.cases(ny_inspect_data$Inspection.Grade)
+ny_inspect_dat <- ny_inspect_data[CC,]
+ny_inspect_dat <- na.omit(ny_inspect_dat)
 
-#numeric_data <- ny_inspect_data[,-c(1:3, 5:12, 20:24, 60:61, 97)]
+numeric_data <- ny_inspect_data[,-c(1:3, 5:12, 20:24, 60:61, 97)]
 
 # ensure that no variables contain NA
 colSums(is.na(ny_inspect_data))
@@ -91,22 +91,23 @@ covariates <- covariates[which(!(covariates %in% c("SelfEmployed.per.County",
 
 # Select 20 best covariates and modify Inspection.Grade to fit numeric
 #ny_data$Inspection.Grade <- na.omit(ny_data$Inspection.Grade)
-ny_data <- ny_data_save
-f1 <-function(x){
-  if(x == "A"){1}
-  else if(x == "B"){2}
-  else {3}
-}
+#ny_data <- ny_data_save
 
-ny_data$Inspection.Grade <- lapply(ny_data$Inspection.Grade, f1)
-ny_data <- dplyr::select(ny_data,covariates)
+apply(ny_data, 2, class)
 
-is.numeric(ny_data)
-apply(ny_data,2,class)
+ny_data <- ny_data %>%
+  mutate(Inspection.Grade = factor(Inspection.Grade, levels = c(1, 2, 3), labels = c("A", "B", "C"))) %>%
+  dplyr::select(covariates)
 
-ny_data <- (as.numeric(unlist(ny_data)))
+#ny_data <- mutate(ny_data, Inspection.Grade = factor(Inspection.Grade, levels =c(1, 2, 3), labels = c("A", "B", "C")))
+#ny_data <- dplyr::select(ny_data,covariates)
 
-ny_data_save <- ny_data
+#is.numeric(ny_data)
+#apply(ny_data,2,class)
+
+#ny_data <- (as.numeric(unlist(ny_data)))
+
+#ny_data_save <- ny_data
 
 rm(ny_inspect_data, res, cor, covariates, largest_corr)
 
@@ -139,15 +140,19 @@ tD$Inspection.Grade[tD$Inspection.Grade == 1] <- "Issue"
 tD$Inspection.Grade[tD$Inspection.Grade == 2] <- "Issue"
 tD$Inspection.Grade[tD$Inspection.Grade == 3] <- "No Issue"
 
-tN <- ny_data
+f2 <-function(x){
+  if(x == 1){"No Issue"}
+  else if(x == 2){"Issue"}
+  else {"Issue"}
+}
 
-tN$Inspection.Grade[tN$Inspection.Grade == "B"] <- "Issue"
-tN$Inspection.Grade[tN$Inspection.Grade == "C"] <- "Issue"
-tN$Inspection.Grade[tN$Inspection.Grade == "A"] <- "No Issue"
 
-#sample_tD <- sample.int(n = nrow(tD), size = floor(.75*nrow(tD)), replace = F)
-#tD_train <- tD[sample_tD, ]
-#tD_test  <- tD[-sample_tD, ]
+#tN$Inspection.Grade <- lapply(ny_data$Inspection.Grade, f2)
+# convert column classes to factor
+#tNtest <- tN
+#rm(tNtest)
+#tN[sapply(tN, is.character)] <- lapply(tN[sapply(tN, is.list)], as.factor)
+
 
 #tDtrain <- ny_inspect_data[]
 
@@ -165,6 +170,7 @@ ggplot(data = tD, aes(x=Inspection.Grade)) +
 #Logistical Regression (no L)
 ################################
 
+###################### wit tD --------------------
 # Binomial logistical regression i.e. Only "Issue" & "No issue"
 tDa <- na.omit(tD[,c("Inspection.Grade", "Number_of_Reviews", "Income.per.CenTrac")])
 train_tDa <- sample.int(n = nrow(tDa), size = floor(.75*nrow(tDa)), replace = F)
@@ -195,6 +201,44 @@ mean(glm.pred != tDa[-train_tDa,])
 glm.pred = rep("Issue", nrow(tDa[-train_tDa,]))
 glm.pred[glm.probs > .5] = "No Issue"
 table(glm.pred, )
+#---------------
+
+
+############# with tN
+# Binomial logistical regression i.e. Only "Issue" & "No issue"
+tN <- ny_data
+tN$Inspection.Grade[tN$Inspection.Grade == "A"] <- "0"
+tN <- mutate()
+
+tN %>%
+  mutate(Inspection.Grade = replace(tN, Inspection.Grade == 1, 0)) %>%
+  as.data.frame()
+
+Inspection.Grade = factor(Inspection.Grade, levels = c(1, 2, 3), labels = c("A", "B", "C")))
+train_tN <- sample.int(n = nrow(tN), size = floor(.75*nrow(tN)), replace = F)
+
+glm.fits = glm(formula = as.factor(Inspection.Grade) ~ count + chain + shop_density + rating_closest_neighb + subway_distance + TotalPop.per.CenTrac + Women.per.CenTrac + Hispanic.per.CenTrac + White.per.CenTrac + Black.per.CenTrac + Service.per.CenTrac + Drive.per.CenTrac + Carpool.per.CenTrac + Transit.per.CenTrac + Walk.per.CenTrac + PublicWork.per.CenTrac + Women.per.County + White.per.County + Asian.per.County + OtherTransp.per.County, family = binomial, data = tN, subset = train_tN)
+
+summary(glm.fits)
+coef(glm.fits)
+summary(glm.fits)$coef
+
+glm.probs = predict(glm.fits, tN[-train_tN,], type = "response")
+# gives the probability that there will be an Issue
+contrasts(as.factor(tD$Inspection.Grade))
+glm.pred = rep("Issue", nrow(tDa[-train_tN,]))
+glm.pred[glm.probs>=.5] = "No Issue"
+
+all(is.na(tN$Income.per.CenTrac) == FALSE)
+table(glm.pred)
+table(tN$Inspection.Grade)
+table(glm.pred, tDa[-train_tDa,]$Inspection.Grade)
+mean(glm.pred == tDa[-train_tDa,]$Inspection.Grade)
+mean(glm.pred != tDa[-train_tDa,]$Inspection.Grade)
+# could be interesting to specifically find out how often Issue was guessed correctly
+
+# Compute predictions and compare to actual assessments
+
 
 
 
@@ -204,7 +248,7 @@ table(glm.pred, )
 # Ordinal logistical regression
 #
 
-pDa<- na.omit(ny_inspect_dat[,c("Inspection.Grade", "Number_of_Reviews", "Income.per.CenTrac")])
+pDa <- na.omit(ny_inspect_dat[,c("Inspection.Grade", "Number_of_Reviews", "Income.per.CenTrac")])
 pDa <-data.frame(Inspection.Grade=factor(pDa[,"Inspection.Grade"]),scale(pDa[,c("Inspection.Grade", "Number_of_Reviews", "Income.per.CenTrac")]))
 train_pDa <- sample.int(n = nrow(pDa), size = floor(.75*nrow(pDa)), replace = F)
 
