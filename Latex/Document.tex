@@ -33,6 +33,7 @@
 %Fussnoten am Ende der Seite
 \usepackage[bottom]{footmisc}
 
+\usepackage{amsmath}
 \usepackage{hyperref}
 \usepackage{graphicx} %Package für Grafiken
 \usepackage{subfig} % Package für mehrere Grafiken nebeneinander
@@ -83,21 +84,7 @@ We will predict the food store inspection ratings from this dataset with differe
 
 \section{Spatial Data}
 
-Some of the predictors rely on geolocation data. The cleaned inspection dataset contain spatial information in form of latitude and longitude data for most of the observations. The latitude and longitude information, however, is embedded in a larger address string. We create a function to extract the location data in two new columns. A check for \texttt{NA} values reveals that 748 values missing location information. The exact address is available for all shops though. Therefore, we combine, street, city and ZIP code to a single string that can be used with the Google Maps API\footnote{In essence, the Google Maps API is a free service offered by Google. It requires only a one-time registration with a valid email address. Afterwards, it generates an API Key that must be included in the R-script  with the command \texttt{register\_google(key = "API KEY")}.} to obtain the missing latitude and longitude details. A Map of the completed data is illustrated in Figure~\ref{map1} on state and city level.\\
-\begin{figure}
-\captionof{figure}{Geographic Distribution of the inspected Shops \label{map1}} 
-\subfloat[New York State]{%
-       \includegraphics[width=0.5\textwidth]{Plots/Plot1_Map.png}
-     }
-     \hfill
-     \subfloat[New York City]{%
-       \includegraphics[width=0.5\textwidth]{Plots/Plot2_Map.png}
-     }
-\end{figure}
-With complete spatial information, we now compute the two variables "shops density in 1km radius" as well as "rating of the closest neighbor". To get the distances of coordinates in meters, we apply the Haversine Formula\footnote{The Haversine Formula has its roots in spherical trigonometry and calculates the geodesic distance -- the shortest path between two points on a curved surface of a sphere, like the Earth. It needs to be mentioned that Haversine Formula does not take into account changes in altitude. However, it provides sufficient accuracy for the scope of this project.}
-\begin{equation} a = \sin^{2}(\frac{\Delta\alpha}{2}) + \cos(\alpha_{1})\cos(\alpha_{2})\sin^{2}(\frac{\Delta\lambda}{2})  \end{equation}
-\begin{equation} d = R \left( 2 \atantwo (\sqrt{a}, \sqrt{1-a} )  \right) \end{equation}
-where $\alpha_{i}$ are latitudes, $\lambda_{i}$ are longitudes, $R$ is the earth's radius ($6371\times10^{3}m$).
+
 
 \section{Subway Data}
 
@@ -105,7 +92,7 @@ In a next step, we amend our New York City inspection data with location informa
 
 \subsection{Google web scraper}
 
-While doing research to find datasets with regards to food inspections we decided to gather more information from webpages. The reviews from customers, written on google places, could give us information about how individual persons have experienced their visit to the specific food shop. In order to gather this information from the internet we set up a web scraper. We used the package \textit{RSelenium} to execute an automated google search for all the food shops. This included a lot of trial and error due to unforeseen changes of the xPaths and other errors. A very fast but costly alternative would have been to use the Google Places API which provides access to all information stored by Google Places. Although it takes much more time we decided to go ahead with scraping the data ourselves. In terms of time a lot of patience was needed. Most of the errors only showed up in the middle of the scraping process, which had a duration of about 24 hours for all the food shops. Unfortunately most of the errors occurred towards the end of the scraping. Therefore, it was only possible to adjust the function after the script run during the night. This resulted in a lot of waiting and adjusting but finally the data was scraped successfully. Nonetheless the scraped data was not in a useable format yet. After tidying and joining the data to the original dataset it was ready to be used. \\
+While doing research to find datasets with regards to food inspections we decided to gather more information from webpages. The reviews from customers, written on google places, could give us information about how individual persons have experienced their visit to the specific food shop. In order to gather this information from the internet we set up a web scraper. We used the package \textit{RSelenium} to execute an automated google search for all the observations. This included a lot of trial and error due to unforeseen changes of the xPaths and other errors. Most of the errors only showed up in the middle of the scraping process, which had a duration of about 24 hours for all the food shops. Therefore, it was only possible to adjust the function after the script run during the night. This resulted in a lot of waiting and adjusting but finally the data was scraped successfully. Nonetheless the scraped data was not in a useable format yet. After tidying and joining the data to the original dataset it was ready to be used. \\
 
 A brief analysis of the dataset revealed the incompleteness of the ratings. Approximately 40\% of the shops don't have an entry in google places and thus neither rating. After a lot of discussion on how to handle the problem we agreed on using the number of reviews as a parameter of the internet popularity. 
 
@@ -113,7 +100,72 @@ A brief analysis of the dataset revealed the incompleteness of the ratings. Appr
 
 \subsection{Airbnb data and spatial analysis}
 
-In order to acquire additional data and parameters on the location of the shops, we integrated data from Airbnb (average price and number of rooms). To join the original and the airbnb data frames a matching key is needed. Regarding the dataset only longitude and latitude were available. Therefore we used the above mentioned spatial data to assign the respective parameter to the ZIP codes in New York. Thereafter we grouped the data by ZIP code, calculated the respective means and counts and added it to the new tibble.
+In order to acquire additional data and parameters on the location of the shops, we integrated data from Airbnb (average price and number of rooms). To join the original and the airbnb data frames a matching key is needed. Regarding the dataset only longitude and latitude were available. Therefore we used the above mentioned spatial data to assign the respective parameter to the ZIP codes in New York. Thereafter we grouped the data by ZIP code, calculated the respective means and counts and added it to the new data frame.
+
+
+\section{Random Forest Analysis}
+
+We decided to use the random forest to have a model with a typically good performance but relatively little tuning requirements. Additionally, the structure of the dataset according to the correlation matrix, seemed rather complex and not linear. Tree models normally outperform linear models in these situations \cite{James}[S. 314] In order to address the problem of class imbalances, the random forest model is built up on bagging mentioned above. Beside several similarities the methodology differs in the following points:
+\begin{enumerate}
+\item Evaluate the different tuning parameter (minimal node size, split rule, number of variables available for splitting at each tree node) in Cross-Validation
+\item Calculate the different errors for all the bagging samples
+\item Choose the model based on the best performance of the tuning parameters
+\item Apply the majority vote to the trained optimal model to get the final predictions
+\end{enumerate}
+
+Although there is normally only little tuning required, the evaluation of tuning parameter is computationally very intensive due to an exponential rise of possible combinations with every new tuning parameter. Therefore we were restricted to a smaller selection of possible tuning grid and only used 40 different combinations. The following graph shows the progress in the model selection process. \\
+
+\begin{figure}[H]
+\centering
+\captionof{figure}{Tuning progress in random forest} \label{rf_tuning}
+
+       \includegraphics[width=0.5\textwidth]{Plots/rf_progress.pdf}
+ 
+
+\end{figure}
+
+The importance of the variables can be shown in figure \ref{var_importance}
+
+\begin{figure}[H]
+\centering
+\captionof{figure}{A variable importance plot for the selected parameters. Variable importance is computed using the mean decrease in Gini index and expressed relative to maximum} \label{var_importance}
+
+       \includegraphics[width=0.5\textwidth]{Plots/var_importance.pdf}
+ 
+
+\end{figure}
+%overbagging
+
+\begin{table}[ht]\centering\begin{tabular}{rllr}  \hline & Var1 & Var2 & Freq \\   \hline1 & A & A & 4327 \\   2 & B & A &   0 \\   3 & C & A &   2 \\   4 & A & B &   0 \\   5 & B & B & 661 \\   6 & C & B &   0 \\   7 & A & C &   0 \\   8 & B & C &   0 \\   9 & C & C & 1859 \\    \hline\end{tabular}\end{table}
+
+%Underbagging
+\begin{table}[ht]\centering\begin{tabular}{rllr}  \hline & Var1 & Var2 & Freq \\   \hline1 & A & A & 2551 \\   2 & B & A &   0 \\   3 & C & A & 224 \\   4 & A & B & 829 \\   5 & B & B & 661 \\   6 & C & B & 233 \\   7 & A & C & 947 \\   8 & B & C &   0 \\   9 & C & C & 1404 \\    \hline\end{tabular}\end{table}
+
+\label{pred-matrix}
+\captionof{table}{Prediction Matrices of Different Estimated Models}
+\begin{center}
+\begin{small}
+\begin{tabular}{ l | c c c}
+\multicolumn{4}{c}{QDA} \\
+\hline
+Obs / \\ Pred & A & B &C \\
+\hline
+A &2839 & 462 & 1164 \\
+B &1260 & 173 & 594 \\
+C &228 & 26 & 103 \\
+\hline
+\end{tabular}
+\quad
+
+
+
+
+
+
+\section{Gradient Boosting}
+
+As a further method of tree based models we implemented extreme gradient boosting. It enables a better performance than random forest and provides more advanced tuning methods. The selected parameters have XXX different combinations which have to be evaluated. The current approach with a full hyper grid search is computationally very intensive and takes several days with an ordinary computer. Another possibility is to use a random discrete search which does not test all combinations but a sample of it with a stopping parameter. Thus this would have meant to implement another package and due to time restrictions was entirely finished.
+
 \section{Zusammenfassung und Diskussion der Resultate} \label{sec:Diskussion}
 
 In dieser Arbeit wurden die Notwendigkeit und allf\"allige Gegenargumente einer globalen Finanzmarktregulierung untersucht. 
