@@ -1,9 +1,12 @@
+# Header----#############################################################################
+
 library(tidyverse)
 library(plyr) # for ldply (similar to apply but output is a df not a list)
 library(MASS) # For Discriminant Analysis
 library(ISLR) # For Discriminant Analysis
-install.packages("./class_7.3-15.tar.gz")
 library(class) # For KNN
+
+#########################################################################################
 
 # Tranformation before analysis----######################################################
 

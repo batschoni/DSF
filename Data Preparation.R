@@ -1,6 +1,5 @@
 
-# Header----
-#########################################################################################
+# Header----#############################################################################
 
 # Install required packages
 # install.packages("ggmap")
@@ -11,15 +10,14 @@
 library(tidyverse)
 library(ggmap) # to get coordinates from a address
 library(ggplot2)
-library(gridExtra) # to create panle plots
 register_google(key = "") # the service is free but requires email registration and a API
 library(rgdal)
 library(dplyr)
+library(raster) # for shapefile
 
 #########################################################################################
 
-# downlaod and first cleaning of inspection data----
-#########################################################################################
+# downlaod and first cleaning of inspection data----#####################################
 
 # Initially download and save the file
 #inspect_data <- read.csv("https://data.ny.gov/api/views/d6dy-3h7r/rows.csv?accessType=DOWNLOAD", stringsAsFactors = FALSE)
@@ -67,8 +65,7 @@ save(inspect_data, file = "./data/inspect_data.RData")
 
 #########################################################################################
 
-# Add Coordinates of shops----
-#########################################################################################
+# Add Coordinates of shops----###########################################################
 
 # Function extracts the coordinates as two vectors from Column 12
 coord <- function(string_vector){
@@ -130,8 +127,7 @@ save(inspect_data, file = "./data/inspect_data.RData")
 
 #########################################################################################
 
-# Spatial Data----
-#########################################################################################
+# Spatial Data----#######################################################################
 
 # Haversine Formula
 # (calculates the distance of two points on the earth surface)
@@ -192,8 +188,7 @@ rm(distances, i, inspect_grade, lat, lon, rating_closest_neighb, shop_density, n
 save(inspect_data, file = "./data/inspect_data.RData")
 #########################################################################################
 
-# Add Google Ratings----
-#########################################################################################
+# Add Google Ratings----#################################################################
 
 # Load Google ratings from web scraping
 load("data/results_scraping_final")
@@ -217,8 +212,7 @@ save(inspect_data, file = "./data/inspect_data.RData")
 
 #########################################################################################
 
-# Filter for New York City----
-#########################################################################################
+# Filter for New York City----###########################################################
 
 # Next we reduce our data set to the neighbourhoods of NY City.
 # We work only with NYC data because data for more variables is available
@@ -233,14 +227,26 @@ save(ny_inspect_data, file = "./data/ny_inspect_data.RData")
 
 #########################################################################################
 
-# Add Demographic Information----
-#########################################################################################
+# Add Demographic Information----########################################################
 
 demographic_data <- read.csv("./data/inspectionsDem.cvs.gz")
-length(unique(demographic_data$Address))
-demographic_data <- demographic_data %>% distinct(Address, .keep_all = TRUE)
-names(demographic_data)
-demographic_data <- demographic_data[!(names(demographic_data) %in% c("County", "Inspection.Grade" , "Inspection.Date", "Owner.Name" , "Trade.Name", "Street", "City", "State.Code", "Zip.Code","Deficiency.Number","Deficiency.Description"))]
+# demographic data with unique addresses
+demographic_data <- demographic_data %>%
+  distinct(Address, .keep_all = TRUE)
+# remove all columns not needed
+demographic_data <- demographic_data %>%
+  dplyr::select(-c("County", 
+             "Inspection.Grade" , 
+             "Inspection.Date", 
+             "Owner.Name" , 
+             "Trade.Name", 
+             "Street", 
+             "City", 
+             "State.Code", 
+             "Zip.Code", 
+             "Deficiency.Number", 
+             "Deficiency.Description"))
+
 ny_inspect_data <- unite(ny_inspect_data, Address , c(Street, City, State.Code, Zip.Code), sep = ", ", remove = FALSE)
 ny_inspect_dem <- merge(ny_inspect_data, demographic_data, by = "Address")
 ny_inspect_dem <- ny_inspect_dem[complete.cases(ny_inspect_dem),]
@@ -252,15 +258,14 @@ save(ny_inspect_data, file = "./data/ny_inspect_data.RData")
 
 #########################################################################################
 
-# Add Airbnb Data----
-#########################################################################################
+# Add Airbnb Data----###################################################################
 
 data_bnb <- read.csv("data/ab_nyc_19.csv") #reading data
 
 longitude = as.numeric(data_bnb$longitude)
 latitude = as.numeric(data_bnb$latitude)
 Coordinates  = tibble(longitude, latitude)
-s = shapefile("data/geolocation/ZIP_CODE_040114.shp")
+s = shapefile("./data/geolocation/ZIP_CODE_040114.shp")
 pts <- Coordinates
 pts <- pts[complete.cases(pts),]
 coordinates(pts) <- ~longitude+latitude
@@ -294,8 +299,7 @@ save(ny_inspect_data, file = "./data/ny_inspect_data.RData")
 
 #########################################################################################
 
-# NYC Subway locations----
-#########################################################################################
+# NYC Subway locations----###############################################################
 
 # Initially download and save the file
 #subway_data <- read.csv("https://data.ny.gov/api/views/i9wp-a4ja/rows.csv?accessType=DOWNLOAD&sorting=true", stringsAsFactors = FALSE)
@@ -334,8 +338,7 @@ save(ny_inspect_data, file = "./data/ny_inspect_data.RData")
 
 #########################################################################################
 
-# Create Map Plots of State Data and NY City Data
-#########################################################################################
+# Map Plots of State Data and NY City Data----###########################################
 
 # Plot1: Map of NY State with Shop Locations
 # Retrieves State Map (Takes a while)
@@ -376,7 +379,7 @@ Plot2 <- ggmap(map_nyc) +
 
 ggsave("./plots/Plot2_Map.png", plot = Plot2, dpi = 300)
 
-# Plot of NY City with Subway Stations
+# Plot3 of NY City with Subway Stations
 Plot3 <- ggmap(map_nyc) +
   geom_point(aes(x = Longitude, y = Latitude, color=factor(Inspection.Grade)), data = ny_inspect_data, size = 0.6, alpha = 0.5) +
   scale_color_manual(labels = c("A", "B", "C"), values = c("green", "yellow", "red")) +
@@ -389,5 +392,5 @@ Plot3 <- ggmap(map_nyc) +
 
 ggsave("./plots/Plot3_Map.png", plot = Plot3, dpi = 300)
 
-rm(subway_data)
+rm(subway_data, inspect_data)
 #########################################################################################
