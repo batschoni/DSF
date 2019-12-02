@@ -1,6 +1,8 @@
+library(tidyverse)
 library(plyr) # for ldply (similar to apply but output is a df not a list)
 library(MASS) # For Discriminant Analysis
 library(ISLR) # For Discriminant Analysis
+install.packages("./class_7.3-15.tar.gz")
 library(class) # For KNN
 
 # Tranformation before analysis----
@@ -85,7 +87,7 @@ ny_data <- ny_data %>%
 ny_data <- ny_data %>%
   mutate(neighbourhood_group = as.numeric(neighbourhood_group))
 
-rm(ny_inspect_data)
+rm(ny_inspect_data, res, cor, covariates, largest_corr)
 
 #########################################################################################
 
@@ -110,14 +112,12 @@ forward_stepwise_selection(ny_data, "Inspection.Grade", lda, K = 10)
 # Coefficients give the lane / plane where the prediction changes / prediction boundaries
 
 forward_stepwise_selection <- function(df, Y, FUN, K = 10){
-  browser()
   # All covariate names
   covariates <- colnames(df)
   covariates <- covariates[which(covariates != Y)]
   # number of covaraies
   p <- length(covariates)
-  # Matrix to store errors
-  # model_errors <- matrix(data = NA, nrow = p, ncol = 2)
+  # df to store errors
   model_errors <- data.frame(Model = character(),
                                Error = double(),
                                stringsAsFactors=FALSE)
@@ -151,7 +151,7 @@ forward_stepwise_selection <- function(df, Y, FUN, K = 10){
       # Prediction Error (Rate of Wrong Predictions)
       pred_error <- apply(model_pred, 2, function(x) x != as.numeric(testing_data[, Y]))
       pred_error <- as.data.frame(
-        apply(pred_error, 2, function(x) (nrow(testing_data)-sum(x, na.rm = TRUE))/nrow(testing_data)))
+        apply(pred_error, 2, function(x) sum(x, na.rm = TRUE)/nrow(testing_data)))
       cross_val_err[,j] <- pred_error[, 1]
     }
     # Average of CV prediction error
@@ -278,19 +278,10 @@ over_under_bagging <- function(df, Y, B, sample_size, FUN){
   return(oob_err_final)
 }
 
-###
-library(randomForest)
-test <- randomForest(Inspection.Grade ~ count, data = ny_data)
-test <- glm(Inspection.Grade ~ count, data = ny_data, family = "binomial")
-test <- lda(Inspection.Grade ~ count, data = ny_data)
-pred <- predict(test, data = ny_data)
-length(pred)
-###
-
 # implement LDA with under-bagging
 lda_under_bagging_error <- over_under_bagging(ny_data,
                                               Y = "Inspection.Grade",
-                                              B = 2,
+                                              B = 100,
                                               sample_size = c(700, 700, 700),
                                               FUN = lda)
 
@@ -325,7 +316,7 @@ ggplot(data = lda_error, aes(x = Model, group=1)) +
        y = "Error Rate") +
   theme_gray()
 
-# Lowest OOB Error is achievd wih under-bagging and the variables count + number_of_reviews
+save(lda_error, file = "./Results/lda_error.RData")
 
 rm(lda_over_bagging_error, lda_under_bagging_error)
 
@@ -438,6 +429,9 @@ qda_over_bagging_error <- over_under_bagging(ny_data,
                                              sample_size = c(5000, 5000, 5000),
                                              FUN = qda)
 
+save(qda_under_bagging_error, file = "./Results/qda_under_error.RData")
+save(qda_over_bagging_error, file = "./Results/qda_over_error.RData")
+
 qda_error <- full_join(qda_under_bagging_error, qda_over_bagging_error, by = "rownames(err)")
 
 # we create X-lables for the plot of the Bagged-CV Error
@@ -539,49 +533,56 @@ rm(g, grid_data, r, lda_pred, resolution, xs, ys, dec_border, zs)
 
 # KNN Model Selection----
 #########################################################################################
+test <- tuning_parameter_selection(ny_data, "Inspection.Grade", knn, K = 2, k = 2)
 
 # Slightly adjust the function to KNN
-
-forward_stepwise_selection <- function(df, Y, FUN, K = 10){
+# ( changed or added lines are marked with #<<<<<< )
+forward_stepwise_selection <- function(df, Y, FUN, K = 10, k){
+  browser()
   # All covariate names
   covariates <- colnames(df)
   covariates <- covariates[which(covariates != Y)]
   # number of covaraies
   p <- length(covariates)
-  # Matrix to store errors
-  model_errors <- matrix(data = c(1:p, rep(NA, p)), nrow = p, ncol = 2)
-  # select first covariate randomly
+  # df to store errors
+  model_errors <- data.frame(Model = character(),
+                             Error = double(),
+                             stringsAsFactors=FALSE)
+  # vector for used covariates
   model_covariates <- c()
+  # model estimate for each number of covariates
   for(i in 0:(p-1)){
     # Not yet used covariates
     not_model_covariates <- covariates[which(!(covariates %in% model_covariates))]
     # identity matrix to select each variable once
     select_covaraite <- .col(c((p-i), (p-i))) == .row(c((p-i), (p-i)))
-    # formula for model estimate
-    allModelsList <- apply(select_covaraite, 1, function(x)
-      paste(c(model_covariates, not_model_covariates[x]),
-            collapse= " + "))
-    #allModelsList <- as.matrix(allModelsList)
-    allModelsList <- lapply(allModelsList, function(x)
-      as.formula(paste(c(Y, x), collapse = " ~ ")))
-    # >>>> CV
+    # covariate combinations for model estimate
+    allModelsList <- adply(select_covaraite, 1, function(x) c(model_covariates, not_model_covariates[x]))
+    allModelsList <- allModelsList[, 2:(i+2)] 
     # Implement cross validation
     fold <- round(nrow(df) / K)
     cross_val_err = matrix(data = NA, nrow = length(not_model_covariates), ncol = K)
     for(j in 1:K){
+      # We need to exclude 4 variables with low variety becuase the tiels of KNN are limited to 1000
+      #df <- df %>% #<<<<<<
+      #  dplyr::select(-c("count", "rating_closest_neighbour", "White.per.County", "OtherTransp.per.County")) #<<<<<<
       train_data <- df[-c((1+(j-1)*fold):(j*fold)),]
       testing_data <- df[(1+(j-1)*fold):(j*fold),]
-      # Fit models
-      model_fit <- lapply(allModelsList, function(x) FUN(x, data=train_data))
-      # Predict
-      model_pred <-  transpose(ldply(model_fit, function(x) predict(x, newdata=testing_data)$class))
+      # Class vectors
+      Y_train <- train_data[, Y] #<<<<<<
+      Y_test <- testing_data[, Y] #<<<<<<
+      # Change format that it works with knn function
+      Y_train <- factor(as.matrix(Y_train)) #<<<<<<
+      # predict models
+      model_pred <- lapply(allModelsList, function(x) 
+        FUN(train = train_data[, as.matrix(x)], test = testing_data[, as.matrix(x)], cl = Y_train, k = k)) #<<<<<<
       # Each column = Prediction results for one variable used
       model_pred <- data.frame(matrix(unlist(model_pred), ncol=length(model_pred), byrow=F))
       colnames(model_pred) <- not_model_covariates
       # Prediction Error (Rate of Wrong Predictions)
-      pred_error <- apply(model_pred, 2, function(x) x != as.numeric(testing_data[, Y]))
+      pred_error <- apply(model_pred, 2, function(x) x != as.matrix(Y_test)) #<<<<<<
       pred_error <- as.data.frame(
-        apply(pred_error, 2, function(x) (nrow(testing_data)-sum(x, na.rm = TRUE))/nrow(testing_data)))
+        apply(pred_error, 2, function(x) sum(x, na.rm = TRUE)/nrow(testing_data)))
       cross_val_err[,j] <- pred_error[, 1]
     }
     # Average of CV prediction error
@@ -591,73 +592,56 @@ forward_stepwise_selection <- function(df, Y, FUN, K = 10){
     model_covariates <- c(model_covariates, best_covariate)
     # Error of best prediction
     model_errors[(i+1), 2] <- min(cross_val_err)
+    # best model
+    model_errors[(i+1), 1] <- allModelsList[which(cross_val_err == min(cross_val_err))[1]]
   }
   return(model_errors)
 }
 
-
-model_selection_KNN <- function(df_train, df_test, Y, K){
-  # all covariates
-  col_names <- colnames(df_train)
-  col_names <- col_names[which(col_names != Y)]
-  # Class vectors
-  Y_train <- df_train[, Y]
-  Y_test <- df_test[, Y]
-  # Change format that it works with knn function
-  Y_train <- factor(as.matrix(Y_train))
-  df_train <- df_train[, col_names]
-  df_test <- df_test[, col_names]
-  comb_nrs <- 2^length(col_names) - 1
-  row_names <- c()
-  comb_size <- 0
-  iterations <- length(col_names)
-  for(i in 1:iterations){
-    comb_size <- comb_size + ncol(combn(col_names, i))
-    row_names <- c(row_names, combn(col_names, i, function(x) paste(x, collapse='\n')))
+tuning_parameter_selection <- function(df, Y, FUN, K = 10, k){
+  # All covariate names
+  covariates <- colnames(df)
+  covariates <- covariates[which(covariates != Y)]
+  # df to store errors
+  model_errors <- data.frame(Model = character(),
+                             Error = double(),
+                             stringsAsFactors=FALSE)
+  # folds for CV
+  fold <- round(nrow(df) / K) - 1
+  cross_val_err = matrix(data = NA, nrow = k, ncol = K)
+  for(j in 1:K){
+    # We need to exclude 4 variables with low variety becuase the tiels of KNN are limited to 1000
+    #df <- df %>% #<<<<<<
+    #  dplyr::select(-c("count", "rating_closest_neighbour", "White.per.County", "OtherTransp.per.County")) #<<<<<<
+    train_data <- df[-c((1+(j-1)*fold):(j*fold)),]
+    testing_data <- df[(1+(j-1)*fold):(j*fold),]
+    # Class vectors
+    Y_train <- train_data[, Y] #<<<<<<
+    Y_test <- testing_data[, Y] #<<<<<<
+    # Change format that it works with knn function
+    Y_train <- factor(as.matrix(Y_train)) #<<<<<<
+    train_data <- train_data[, covariates] #<<<<<<
+    testing_data <- testing_data[, covariates] #<<<<<<
+    # all the different k to try
+    k_vector <- 1:k #<<<<<<
+    # predict with all differnt k
+    model_pred <- lapply(k_vector, function(x) 
+      FUN(train = train_data, test = testing_data, cl = Y_train, k = x)) #<<<<<<
+    # Each column = Prediction results for one variable used
+    model_pred <- data.frame(matrix(unlist(model_pred), ncol=length(model_pred), byrow=F))
+    colnames(model_pred) <- 1:k #<<<<<<
+    # Prediction Error (Rate of Wrong Predictions)
+    pred_error <- apply(model_pred, 2, function(x) x != as.matrix(Y_test)) #<<<<<<
+    pred_error <- as.data.frame(
+      apply(pred_error, 2, function(x) sum(x, na.rm = TRUE)/nrow(testing_data)))
+    cross_val_err[,j] <- pred_error[, 1]
   }
-  error_rate <- matrix(data = NA, ncol = 1, nrow = comb_nrs)
-  rownames(error_rate) <- row_names
-  counter <- 1
-  for(i in 1:iterations){
-    for(j in 1:ncol(combn(1:iterations, i))){
-    df_train_KNN <- df_train[, combn(1:iterations, i)[, j]]
-    df_test_KNN <- df_test[, combn(1:iterations, i)[, j]]
-    model_fit <- knn(train = df_train, test = df_test, cl = Y_train, k = K)
-    wrong_pred <- which(model_fit != as.matrix(Y_test))
-    error <- length(wrong_pred) / nrow(Y_test)
-    error_rate[counter, 1] <- error
-    counter <- counter + 1
-    }
-  }
-  return(error_rate)
-}
-
-as.numeric((Y_train))
-
-Y_train <- factor(as.matrix(ny_data[1:4000, "Inspection.Grade"]))
-as.numeric(factor(as.matrix(Y_train)))
-df_train <- ny_data[1:4000, ]
-df_test <- ny_data[4001:7000, ]
-
-knn(train = df_train, test = df_test, cl = Y_train, k = 10)
-
-model_selection_KNN(df_train, df_test, "Inspection.Grade", 10)
-
-k_fold_CV <- function(df, Y, K, k){
-  fold <- round(nrow(df) / K)
-  cross_val_err = matrix(data = NA, nrow = 2^(ncol(df)-1) - 1, ncol = K)
-  for(i in 1:K){
-    train_data <- df[-c((1+(i-1)*fold):(i*fold)),]
-    testing_data <- df[(1+(i-1)*fold):(i*fold),]
-    err <- model_selection_KNN(train_data, testing_data, Y, k)
-    cross_val_err[,i] <- err[, 1]
-  }
+  # Average of CV prediction error
   cross_val_err <- as.tibble(apply(cross_val_err, 1, mean, na.rm=TRUE))
-  rownames(cross_val_err) = rownames(err)
-  return(cross_val_err)
+return(cross_val_err)
 }
 
-over_under_bagging <- function(df, Y, B, sample_size, k){
+over_under_bagging <- function(df, Y, B, FUN, sample_size, k){
   set.seed(123)
   classes <- as.matrix(unique(df[Y]))
   classes <- sort(classes)
@@ -665,48 +649,40 @@ over_under_bagging <- function(df, Y, B, sample_size, k){
     nam <- paste("subset", classes[i], sep = "")
     assign(nam, df[which(as.matrix(df[Y])== classes[i]), ])
   }
-  CV_err = matrix(data = NA, nrow = 2^(ncol(df) - 1) - 1, ncol = B)
+  CV_err = matrix(data = NA, nrow = k, ncol = B)
   for(i in 1:B){
     sampleA <- sample(1:nrow(subsetA), sample_size[1], replace = T)
     sampleB <- sample(1:nrow(subsetB), sample_size[2], replace = T)
     sampleC <- sample(1:nrow(subsetC), sample_size[3], replace = T)
     bagging_data <- rbind(subsetA[sampleA, ], subsetB[sampleB, ], subsetC[sampleC, ])
-    err <- k_fold_CV(bagging_data, Y, 10, k)
+    err <- tuning_parameter_selection(df, Y, FUN, K = 10, k)
     CV_err[,i] <- as.matrix(err[, 1])
   }
   CV_err_final <- as.tibble(apply(CV_err, 1, mean, na.rm=TRUE))
-  CV_err_final <- cbind(rownames(err), CV_err_final)
+  CV_err_final <- cbind(k = 1:k, Error = CV_err_final)
   #oob_err_final <- as.matrix(apply(oob_err, 1, mean, na.rm=TRUE))
   #rownames(oob_err_final) <-  rownames(err)
   return(CV_err_final)
 }
 
+over_under_bagging(ny_data, "Inspection.Grade", knn, B = 2, k = 10, sample_size = c(700, 700, 700))
 
-# implement KNN with different Ks and under-bagging
-Ks = 10
-knn_under_bagging_error <- matrix(data = NA, 
-                                  ncol = 2^(ncol(ny_data) - 1) -1,
-                                  nrow = Ks)
+knn_under_bagging_error <- over_under_bagging(ny_data,
+                                              Y = "Inspection.Grade",
+                                              knn,
+                                              B = 100,
+                                              k = 50,
+                                              sample_size = c(700, 700, 700))
 
-knn_over_bagging_error <- matrix(data = NA, 
-                                  ncol = 2^(ncol(ny_data) - 1) -1,
-                                  nrow = Ks)
-for(i in 1:Ks){
-  knn_under_bagging_error[, Ks] <- over_under_bagging(ny_data,
-                                                Y = "Inspection.Grade",
-                                                B = 10,
-                                                sample_size = c(700, 700, 700),
-                                                k = Ks)
-}
-for(i in 1:Ks){
-# implement KNN with different Ks and over-bagging
-  knn_over_bagging_error[, Ks] <- over_under_bagging(ny_data,
-                                             Y = "Inspection.Grade",
-                                             B = 10,
-                                             sample_size = c(5000, 5000, 5000),
-                                             k = 10)
-}
-lda_error <- full_join(lda_under_bagging_error, lda_over_bagging_error, by = "rownames(err)")
+knn_over_bagging_error <- over_under_bagging(ny_data,
+                                              Y = "Inspection.Grade",
+                                              knn,
+                                              B = 100,
+                                              k = 50,
+                                              sample_size = c(5000, 5000, 5000))
+
+save(knn_under_bagging_error, file = "./Results/knn_under_error.RData")
+save(knn_over_bagging_error, file = "./Results/knn_over_error.RData")
 
 # we create X-lables for the plot of the Bagged-CV Error
 covariates <- ncol(ny_data) - 1
