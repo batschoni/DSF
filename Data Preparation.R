@@ -237,11 +237,13 @@ save(ny_inspect_data, file = "./data/ny_inspect_data.RData")
 #########################################################################################
 
 demographic_data <- read.csv("./data/inspectionsDem.cvs.gz")
-length(unique(demographic_data$Address))
+# Delete duplicates that could have been created in the previus merging
 demographic_data <- demographic_data %>% distinct(Address, .keep_all = TRUE)
-names(demographic_data)
+# delete variables that are not used for merging, but are still present in both dataframes, so they dont show up twice, afterwards
 demographic_data <- demographic_data[!(names(demographic_data) %in% c("County", "Inspection.Grade" , "Inspection.Date", "Owner.Name" , "Trade.Name", "Street", "City", "State.Code", "Zip.Code","Deficiency.Number","Deficiency.Description"))]
+#Create variaable to merge with
 ny_inspect_data <- unite(ny_inspect_data, Address , c(Street, City, State.Code, Zip.Code), sep = ", ", remove = FALSE)
+#merge
 ny_inspect_dem <- merge(ny_inspect_data, demographic_data, by = "Address")
 ny_inspect_dem <- ny_inspect_dem[complete.cases(ny_inspect_dem),]
 ny_inspect_data <- ny_inspect_dem

@@ -11,17 +11,104 @@ library(corrplot)
 library(MASS)
 library(glmnet)
 library(magrittr)
+library(dplyr)
 
 ## Data Preparation
 
 # Load data for NYC
 load("~/GitHub/DSF/data/ny_inspect_data.RData")
-load("~/GitHub/DSF/data/ny_inspect_data2.RData")
+#load("~/GitHub/DSF/data/ny_inspect_data2.RData")
 ny_inspect_data_save <- ny_inspect_data
-CC <- complete.cases(ny_inspect_data$Inspection.Grade)
-ny_inspect_dat <- ny_inspect_data[CC,]
-ny_inspect_dat <- na.omit(ny_inspect_dat)
-numeric_data <- ny_inspect_data[,-c(1:3, 5:12, 20:24, 60:61, 97)]
+#CC <- complete.cases(ny_inspect_data$Inspection.Grade)
+#ny_inspect_dat <- ny_inspect_data[CC,]
+#ny_inspect_dat <- na.omit(ny_inspect_dat)
+
+#numeric_data <- ny_inspect_data[,-c(1:3, 5:12, 20:24, 60:61, 97)]
+
+# ensure that no variables contain NA
+colSums(is.na(ny_inspect_data))
+
+# Remove everything except the potential covariates
+ny_data <- ny_inspect_data %>%
+  dplyr::select(-c(Address,
+                   Trade.Name, 
+                   County, 
+                   Inspection.Date, 
+                   Owner.Name, 
+                   Street, 
+                   City, 
+                   State.Code, 
+                   Zip.Code, 
+                   Deficiency.Number, 
+                   Deficiency.Description, 
+                   X, 
+                   TractId, 
+                   Location, 
+                   State.per.CenTrac, 
+                   County.per.CenTrac, 
+                   State.per.County, 
+                   neighbourhood_group, 
+                   Pacific.per.County,
+                   Latitude,
+                   Longitude))
+
+# For computation restriction, we need to limit our analysis to the most important covariates
+# Therfore, we take the 20 variables with the highest correlation to Inspection Grade.
+
+# Correlation in aboslute term to Inspetion Grade
+res <- abs(cor(ny_data))[,1]
+res <- as.data.frame(res)
+# 21 largest correlation (inclusive Inspection Grade to itself)
+largest_corr <- sort(res[,1], decreasing = TRUE)[1:41]
+covariates <- rownames(res)
+# 20 variables with the larges correlation to inspection grade
+covariates <- covariates[which(res[,1] %in% largest_corr)]
+
+# Demographic data are extremely prone to multicolinrearity
+# Check correlation of variables
+cor = cor(ny_data)
+# exclude all that are highly correlated to each other
+covariates <- covariates[which(!(covariates %in% c("SelfEmployed.per.County", 
+                                                   "Walk.per.County", 
+                                                   "PrivateWork.per.County", 
+                                                   "Construction.per.County", 
+                                                   "Drive.per.County", 
+                                                   "Carpool.per.County", 
+                                                   "Men.per.County", 
+                                                   "MeanCommute.per.County", 
+                                                   "WorkAtHome.per.County",
+                                                   "FamilyWork.per.County",
+                                                   "PublicWork.per.County",
+                                                   "VotingAgeCitizen.per.County",
+                                                   "Transit.per.County",
+                                                   "Employed.per.County",
+                                                   "Native.per.County",
+                                                   "TotalPop.per.County",
+                                                   "PrivateWork.per.CenTrac",
+                                                   "IncomeErr.per.County",
+                                                   "IncomePerCap.per.County",
+                                                   "Hispanic.per.County")))]
+
+# Select 20 best covariates and modify Inspection.Grade to fit numeric
+#ny_data$Inspection.Grade <- na.omit(ny_data$Inspection.Grade)
+ny_data <- ny_data_save
+f1 <-function(x){
+  if(x == "A"){1}
+  else if(x == "B"){2}
+  else {3}
+}
+
+ny_data$Inspection.Grade <- lapply(ny_data$Inspection.Grade, f1)
+ny_data <- dplyr::select(ny_data,covariates)
+
+is.numeric(ny_data)
+apply(ny_data,2,class)
+
+ny_data <- (as.numeric(unlist(ny_data)))
+
+ny_data_save <- ny_data
+
+rm(ny_inspect_data, res, cor, covariates, largest_corr)
 
 set.seed(123)
 
@@ -36,6 +123,7 @@ ggplot(data = ny_inspect_data, aes(x=Inspection.Grade)) +
   theme_gray()
 
 corrplot(cor(tD[,c("Number_of_Reviews", "Income.per.CenTrac")]), method = "circle")
+corrplot(cor(ny_data), method = "circle", use="pairwise.complete.obs")
 corrplot(cor(numeric_data), method = "circle", use="pairwise.complete.obs")
 corrplot.mixed(cor(numeric_data), lower.col = "black", number.cex = 1)
 
@@ -50,6 +138,12 @@ tD <- ny_inspect_data
 tD$Inspection.Grade[tD$Inspection.Grade == 1] <- "Issue"
 tD$Inspection.Grade[tD$Inspection.Grade == 2] <- "Issue"
 tD$Inspection.Grade[tD$Inspection.Grade == 3] <- "No Issue"
+
+tN <- ny_data
+
+tN$Inspection.Grade[tN$Inspection.Grade == "B"] <- "Issue"
+tN$Inspection.Grade[tN$Inspection.Grade == "C"] <- "Issue"
+tN$Inspection.Grade[tN$Inspection.Grade == "A"] <- "No Issue"
 
 #sample_tD <- sample.int(n = nrow(tD), size = floor(.75*nrow(tD)), replace = F)
 #tD_train <- tD[sample_tD, ]
