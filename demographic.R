@@ -1,5 +1,4 @@
-install.packages("gender")
-install.packages("genderdata", repos = "http://packages.ropensci.org", type = "source")
+
 library("tidyverse")
 library("readr")
 library("gender")
@@ -113,14 +112,15 @@ AddTrac$`11` <- lapply(AddTrac$`11`, f2)
 AddTrac <- unite(AddTrac, TractId, c("9","10","11"), sep = "")
 colnames(AddTrac)[1:2] <- c("Numbers","Address")
 AddTrac <- AddTrac[,c("Address","TractId")]
-#should not exist anymore: AddTrac$TractId <- gsub("NANANA", NA, AddTrac$TractId)
+AddTrac <- AddTrac %>% distinct(Address, .keep_all = TRUE)
 
 
 #######
 # Match AddTrac with Inspections to have the TractId numbers included in the Inspections Dataframe
 inspections <- inspectionsSave
 inspections$County <- toupper(inspections$County)
-inspections <- unite(inspections, Address , c(Street, County, State.Code, Zip.Code), sep = ", ", remove = FALSE)
+
+inspections <- unite(inspections, Address , c(Street, City, State.Code, Zip.Code), sep = ", ", remove = FALSE)
 inspectionsTrac <- merge(inspections, AddTrac, by = "Address")
 
 #####
@@ -132,7 +132,7 @@ inspectionsCen <- merge(inspectionsTrac, ny17Cen, by.x = "TractId", by.y = "Trac
 ny17county$`County per County` <- toupper(ny17county$`County per County`)
 inspectionsDem <- merge(inspectionsCen, ny17county, by.x = "County", by.y = "County per County")
 
-filter(inspectionsDem, c("NEW YOKR", "KINGS COUNTY", "QUEENS", "RICHMOND"))
-
+# Export data
 write.csv(inspectionsDem, file = gzfile("C:/Users/andre/Documents/HSG/W-DS/inspectionsDem.cvs.gz"))
 INSPECTIONS <- read.csv("~/HSG/W-DS/inspectionsDem.cvs.gz")
+
