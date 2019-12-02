@@ -444,7 +444,7 @@ demographic_data <- read.csv("./data/inspectionsDem.cvs.gz")
 # demographic data with unique addresses
 demographic_data <- demographic_data %>%
   distinct(Address, .keep_all = TRUE)
-# remove all columns not needed
+# delete variables that are not used for merging, but are still present in both dataframes, so they dont show up twice, afterwardsded
 demographic_data <- demographic_data %>%
   dplyr::select(-c("County", 
              "Inspection.Grade" , 
@@ -457,8 +457,8 @@ demographic_data <- demographic_data %>%
              "Zip.Code", 
              "Deficiency.Number", 
              "Deficiency.Description"))
-
 ny_inspect_data <- unite(ny_inspect_data, Address , c(Street, City, State.Code, Zip.Code), sep = ", ", remove = FALSE)
+#merge
 ny_inspect_dem <- merge(ny_inspect_data, demographic_data, by = "Address")
 ny_inspect_dem <- ny_inspect_dem[complete.cases(ny_inspect_dem),]
 ny_inspect_data <- ny_inspect_dem
