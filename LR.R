@@ -12,6 +12,7 @@ library(MASS)
 library(glmnet)
 library(magrittr)
 library(dplyr)
+library(plyr)
 
 ## Data Preparation
 
@@ -170,51 +171,13 @@ ggplot(data = tD, aes(x=Inspection.Grade)) +
 #Logistical Regression (no L)
 ################################
 
-###################### wit tD --------------------
-# Binomial logistical regression i.e. Only "Issue" & "No issue"
-tDa <- na.omit(tD[,c("Inspection.Grade", "Number_of_Reviews", "Income.per.CenTrac")])
-train_tDa <- sample.int(n = nrow(tDa), size = floor(.75*nrow(tDa)), replace = F)
-#tDa_train <- na.omit(tD_train[,c("Inspection.Grade", "Number_of_Reviews", "Income.per.CenTrac")])
-#tDa_test <- na.omit(tD_test[,c("Inspection.Grade", "Number_of_Reviews", "Income.per.CenTrac")])
-
-glm.fits = glm(formula = as.factor(Inspection.Grade) ~ Number_of_Reviews + Income.per.CenTrac, family = binomial, data = tDa, subset = train_tDa)
-
-summary(glm.fits)
-coef(glm.fits)
-summary(glm.fits)$coef
-
-glm.probs = predict(glm.fits, tDa[-train_tDa,], type = "response")
-# gives the probability that there will be an Issue
-contrasts(as.factor(tD$Inspection.Grade))
-glm.pred = rep("Issue", nrow(tDa[-train_tDa,]))
-glm.pred[glm.probs>=.5] = "No Issue"
-
-all(is.na(tDa$Income.per.CenTrac) == FALSE)
-table(glm.pred)
-table(glm.pred, tDa[-train_tDa,]$Inspection.Grade)
-mean(glm.pred == tDa[-train_tDa,]$Inspection.Grade)
-mean(glm.pred != tDa[-train_tDa,])
-# could be interesting to specifically find out how often Issue was guessed correctly
-
-# Compute predictions and compare to actual assessments
-
-glm.pred = rep("Issue", nrow(tDa[-train_tDa,]))
-glm.pred[glm.probs > .5] = "No Issue"
-table(glm.pred, )
-#---------------
-
 
 ############# with tN
 # Binomial logistical regression i.e. Only "Issue" & "No issue"
 tN <- ny_data
-tN$Inspection.Grade[tN$Inspection.Grade == "A"] <- "0"
-tN <- mutate()
+tN$Inspection.Grade <- revalue(tN$Inspection.Grade, c(A = 0, B = 1, C = 1))
+class(tN$Inspection.Grade)
 
-tN %>%
-  mutate(Inspection.Grade = replace(tN, Inspection.Grade == 1, 0)) %>%
-  as.data.frame()
-
-Inspection.Grade = factor(Inspection.Grade, levels = c(1, 2, 3), labels = c("A", "B", "C")))
 train_tN <- sample.int(n = nrow(tN), size = floor(.75*nrow(tN)), replace = F)
 
 glm.fits = glm(formula = as.factor(Inspection.Grade) ~ count + chain + shop_density + rating_closest_neighb + subway_distance + TotalPop.per.CenTrac + Women.per.CenTrac + Hispanic.per.CenTrac + White.per.CenTrac + Black.per.CenTrac + Service.per.CenTrac + Drive.per.CenTrac + Carpool.per.CenTrac + Transit.per.CenTrac + Walk.per.CenTrac + PublicWork.per.CenTrac + Women.per.County + White.per.County + Asian.per.County + OtherTransp.per.County, family = binomial, data = tN, subset = train_tN)
@@ -248,13 +211,14 @@ mean(glm.pred != tDa[-train_tDa,]$Inspection.Grade)
 # Ordinal logistical regression
 #
 
-pDa <- na.omit(ny_inspect_dat[,c("Inspection.Grade", "Number_of_Reviews", "Income.per.CenTrac")])
-pDa <-data.frame(Inspection.Grade=factor(pDa[,"Inspection.Grade"]),scale(pDa[,c("Inspection.Grade", "Number_of_Reviews", "Income.per.CenTrac")]))
-train_pDa <- sample.int(n = nrow(pDa), size = floor(.75*nrow(pDa)), replace = F)
+pN <- ny_data
+pN$Inspection.Grade <- revalue(pN$Inspection.Grade, c(A = 0, B = 1, C = 2))
+#pN <-data.frame(Inspection.Grade=factor(pN[,"Inspection.Grade"]),scale(pDa[,c("Inspection.Grade", "Number_of_Reviews", "Income.per.CenTrac")]))
+train_pN <- sample.int(n = nrow(pN), size = floor(.75*nrow(pN)), replace = F)
 
 #p.glm.fits = glm(formula = as.factor(Inspection.Grade) ~ Number_of_Reviews + Income.per.CenTrac, family = multinomial, data = pDa, subset = train_pDa)
 
-polr <- polr(formula = as.factor(Inspection.Grade) ~ Number_of_Reviews + Income.per.CenTrac, data = pDa, subset = train_pDa)
+polr <- polr(formula = as.factor(Inspection.Grade) ~ Inspection.Grade + count + chain + shop_density + rating_closest_neighb + subway_distance + TotalPop.per.CenTrac + Women.per.CenTrac + Hispanic.per.CenTrac + White.per.CenTrac + Black.per.CenTrac + Service.per.CenTrac + Drive.per.CenTrac + Carpool.per.CenTrac + Transit.per.CenTrac + Walk.per.CenTrac + PublicWork.per.CenTrac + Women.per.County + White.per.County + Asian.per.County + OtherTransp.per.County, data = pN, subset = train_pN)
 
 summary(polr)
 coef(polr)
@@ -277,11 +241,32 @@ mean(polr.pred != tDa[-train_tDa,])
 #####################################
 #Logistical Regression with Lasso
 ################################
-
+######
+# with test values
 # Lasso Issue vs. No Issue
 
 x_var <- model.matrix(Inspection.Grade~. , tDa[train_tDa,])[,-1]
 y_var <- ifelse(tDa[train_tDa, "Inspection.Grade"] == "Issue", 1, 0)
+
+cv.lasso <- cv.glmnet(x_var, y_var, alpha = 1, family = "binomial", lambda = NULL)
+lasso <- glmnet(x_var, y_var, alpha = 1, family = "binomial", lambda = cv.lasso$lambda.min)
+coef(lasso)
+
+x_test <- model.matrix(Inspection.Grade~. , tDa[-(train_tDa),])[,-1]
+lasso.probabilities <- lasso %>% predict(newx = x_test)
+lasso.predicted.classes <- ifelse(lasso.probabilities > 0.5, "Issue", "No Issue")
+
+#Accuracy of model
+observed.classes <- tDa[-(train_tDa), "Inspection.Grade"]
+mean(predicted.classes == observed.classes)
+
+
+
+#Real values
+#Lasso Issue vs. No Issue
+
+x_var <- model.matrix(Inspection.Grade~. , tDa[train_tDa,])[,-1]
+y_var <- tN$Inspection.Grade
 
 cv.lasso <- cv.glmnet(x_var, y_var, alpha = 1, family = "binomial", lambda = NULL)
 lasso <- glmnet(x_var, y_var, alpha = 1, family = "binomial", lambda = cv.lasso$lambda.min)
