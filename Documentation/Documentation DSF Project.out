@@ -13,6 +13,6 @@
 \BOOKMARK [2][-]{subsection.3.3}{Pre-Analysis Variable Selection}{section.3}% 13
 \BOOKMARK [2][-]{subsection.3.4}{Linear and Quadratic Discriminant Analysis}{section.3}% 14
 \BOOKMARK [2][-]{subsection.3.5}{K-Nearest Neighbor}{section.3}% 15
-\BOOKMARK [1][-]{section.4}{Random Forest Analysis}{}% 16
-\BOOKMARK [1][-]{section.5}{Gradient Boosting}{}% 17
-\BOOKMARK [1][-]{section.6}{Conclusion}{}% 18
+\BOOKMARK [2][-]{subsection.3.6}{Random Forest Analysis}{section.3}% 16
+\BOOKMARK [2][-]{subsection.3.7}{Gradient Boosting}{section.3}% 17
+\BOOKMARK [1][-]{section.4}{Conclusion}{}% 18
