@@ -1,6 +1,6 @@
 \documentclass[11pt]{article}
 
-\usepackage{hyperref} % Hyperlinks
+
 \usepackage{subfig} % Package für mehrere Grafiken nebeneinander
 \usepackage{amsmath}
 \DeclareMathOperator{\atantwo}{atan2}
@@ -16,6 +16,7 @@
 \usepackage{fancyhdr}
 \usepackage{float}
 
+\usepackage{hyperref} % Hyperlinks
 % citation
 \usepackage{apacite} % APA Citation
 \usepackage{natbib} % Additional bibtex commands
@@ -23,8 +24,11 @@
 \begin{document}
 \includepdf[pages=1]{Cover}
 
+\newpage
+\tableofcontents
+\newpage
 \section{Introduction}
-It is estimated that every year 48 million people fall sick, 128?000 are hospitalized and 3?000 die from food born illnesses \citep{Disease}. These numbers clearly illustrate the necessity of clear and strict oversight over any organisation handling large quantities of food, thusly constantly operating under the danger of poisoning a significant part of the population. Among the four governmental agencies working on minimizing food posed risks, the ?Food Safety and Inspection Service? handles (among other things) the inspections of food retailers (Food Safety and Inspection Service, 2018). The agency employs over 9?000 people and presides over an annual budget ranging from 1,03 ? 1,05 billion USD, with the cost of its field operations in the State of New York alone totaling 13,3 ? 15,3 million USD each year (U.S. Census Bureau, 2018, p. 16)\\
+It is estimated that every year 48 million people fall sick, 128?000 are hospitalized and 3?000 die from food born illnesses \citep{Disease}. These numbers clearly illustrate the necessity of clear and strict oversight over any organisation handling large quantities of food, thusly constantly operating under the danger of poisoning a significant part of the population. Among the four governmental agencies working on minimizing food posed risks, the 'Food Safety and Inspection Service' handles (among other things) the inspections of food retailers (Food Safety and Inspection Service, 2018). The agency employs over 9'000 people and presides over an annual budget ranging from 1,03 - 1,05 billion USD, with the cost of its field operations in the State of New York alone totalling 13,3 - 15,3 million USD each year (U.S. Census Bureau, 2018, p. 16)\\
 \\
 Based on this information, we conclude that successful predictions of which food retailers pose the highest public health risk and the subsequently more efficient allocation of resources, could not only lead to cost reductions of millions of USD every year but might even save lives by preventing the outbreak of dangerous foodborne illnesses. This paper details the data gathering, as well as the application of different analytical methods, aimed to predict the inspection grade of food retailers in NYC.
 
@@ -145,13 +149,13 @@ C &935 & 122 & 506 \\
 \end{tabular}
 \qquad
 \begin{tabular}{ l | c c c}
-\multicolumn{4}{c}{QDA} \\
+\multicolumn{4}{c}{Random Forest} \\
 \hline
 Obs / \\ Pred & A & B &C \\
 \hline
-A &2839 & 462 & 1164 \\
-B &1260 & 173 & 594 \\
-C &228 & 26 & 103 \\
+A &4327 & 0 & 0 \\
+B &0 & 661 & 0 \\
+C &2 & 0 & 1859 \\
 \hline
 \end{tabular}
 \end{small}
@@ -159,42 +163,36 @@ C &228 & 26 & 103 \\
 
 \subsection{K-Nearest Neighbor}
 
-<<<<<<< HEAD
+
 Next, we implemented K-Nearest Neighbor (knn). First, we tried to implement knn similar to the discriminant analysis with backward stepwise selection. However, we realized that the function only allows up to 1000 neighbors which creates an error for discrete variables with low variance.
 
 \section{Random Forest Analysis}
 
-We decided to use the random forest to have a model with a typically good performance but relatively little tuning requirements. Additionally, the structure of the dataset according to the correlation matrix, seemed rather complex and not linear. Tree models normally outperform linear models in these situations \cite{James}[S. 314] In order to address the problem of class imbalances, the random forest model is built up on bagging mentioned above. Beside several similarities the methodology differs in the following points:
-\begin{enumerate}
-\item Evaluate the different tuning parameter (minimal node size, split rule, number of variables available for splitting at each tree node) in Cross-Validation
-\item Calculate the different errors for all the bagging samples
-\item Choose the model based on the best performance of the tuning parameters
-\item Apply the majority vote to the trained optimal model to get the final predictions
-\end{enumerate}
+We decided to use the random forest to have a model with a typically good performance but relatively little tuning requirements. Additionally, the structure of the dataset according to the correlation matrix, seemed rather complex and not linear. Tree models normally outperform linear models in these situations \cite{James}[S. 314] In order to address the problem of class imbalances, the random forest model is built up on bagging mentioned above. Panel~(c) shows the results of the majority vote prediction for the oversampling. As mentioned above it is very likely to overfit and therefore implies a too good result for the current data but most likely not for future new data inputs.\\
 
-Although there is normally only little tuning required, the evaluation of tuning parameter is computationally very intensive due to an exponential rise of possible combinations with every new tuning parameter. Therefore we were restricted to a smaller selection of possible tuning grid and only used 40 different combinations. The following graph shows the progress in the model selection process. \\
+Although there is normally only little tuning required, the evaluation of tuning parameter is computationally very intensive due to an exponential rise of possible combinations with every new tuning parameter. Therefore we were restricted to a smaller selection of possible tuning grid and only used 40 different combinations. \\
+
+\begin{figure}[H]
+\captionof{figure}{A variable importance plot for the selected parameters. Variable importance is computed using the mean decrease in Gini index and expressed relative to maximum \label{var_importance}} 
+\subfloat[Under sampling]{%
+       \includegraphics[width=0.3\textwidth]{Plots/var_imp_under.pdf}
+     }
+     \hfill
+     \subfloat[Over sampling]{%
+       \includegraphics[width=0.3\textwidth]{Plots/var_imp_over.pdf}
+     }
+\end{figure}
+
+The importance of the variables can be shown in figure \ref{var_importance}. The distance to the next subway station is in both samples the most important variable. Therefore, it is also used in the Individual Conditional Expectation analysis.
 
 \begin{figure}[H]
 \centering
-\captionof{figure}{Tuning progress in random forest} \label{rf_tuning}
-
-       \includegraphics[width=0.5\textwidth]{Plots/rf_progress.pdf}
- 
-
+\captionof{figure}{Individual Conditional Expectation (ICE) for over- and under sampling \label{ice}} 
+\includegraphics[width=0.5\textwidth]{Plots/ice_plots.pdf}
+     
 \end{figure}
 
-The importance of the variables can be shown in figure \ref{var_importance}
-
-\begin{figure}[H]
-\centering
-\captionof{figure}{A variable importance plot for the selected parameters. Variable importance is computed using the mean decrease in Gini index and expressed relative to maximum} \label{var_importance}
-
-       \includegraphics[width=0.5\textwidth]{Plots/var_importance.pdf}
- 
-
-\end{figure}
-
-Another possibility to 
+As discussed above and visible in figure \ref{ice} even the most important variables do not have a significant impact on the predictions. Thus, additional and more relevant parameters are needed in order to achieve a better performance.
 
 \section{Gradient Boosting}
 

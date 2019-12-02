@@ -1154,7 +1154,7 @@ for (i in 1:B) {
                          tuneGrid = tuneGrid, #calculate the best model using the tuning parameters
                          importance = "impurity") #to analyze the variable importance
   
-  bagging_error[index[i]:(index[i+1]-1),] = model_fit$results[,]
+  bagging_error[index[i]:(index[i+1]-1),] = without_model$results[,]
   
 }
 #call the above defined function to calculate the cross validated bagging errors
@@ -1302,7 +1302,7 @@ hyper_grid <- expand.grid(
   max_depth = c(1, 3, 5, 7),
   min_child_weight = c(1, 3, 5, 7),
   subsample = c(.65, .8, 1), 
-  colsample_bytree = c(.8, .9, 1),
+  colsample_bytree = c(.8, .9, 1)
 )
 
 #set up function for applying the bagging to xgb
