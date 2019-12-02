@@ -1,10 +1,27 @@
 # Header----#############################################################################
 
+# install.packages("rsample") # data splitting
+# install.packages("ranger")
+# install.packages("caret")
+# install.packages("pdp")
+# install.packages("vtreat")
+# install.packages("xgboost")
+# install.packages("h2o")
+
 library(tidyverse)
 library(plyr) # for ldply (similar to apply but output is a df not a list)
 library(MASS) # For Discriminant Analysis
 library(ISLR) # For Discriminant Analysis
 library(class) # For KNN
+library(randomForest) # basic implementation of random forests
+library(vtreat)
+library(pdp) # model visualization
+library(xgboost)
+library(h2o)
+library(rsample) # data splitting 
+library(ranger) # a faster implementation of random forests
+library(caret) # an aggregator package for performing many machine learning models
+
 
 #########################################################################################
 
@@ -472,7 +489,7 @@ Plot6 <- ggplot(data = lda_performance) +
   geom_point(aes(x = Nr_Covariates, y = error, colour=method)) +
   geom_vline(xintercept = best_model_nr, linetype = "dotted", color = "Black", size = 0.5) +
   labs(title="Methodology illsutrated with LDA",
-       x="Number of Covariats",
+       x="Number of Covariates",
        y = "Error Rate",
        color = "Method") +
   scale_color_manual(labels = c("Imbalanced", "No Bagging 1", "No Bagging 2","Over-Bagging", "Under-Bagging"), 
@@ -504,7 +521,7 @@ Plot7 <- ggplot(data = lda_performance) +
   geom_point(aes(x = Nr_Covariates, y = error, colour=method)) +
   geom_vline(xintercept = best_model_nr, linetype = "dotted", color = "Black", size = 0.5) +
   labs(title="Error Rate LDA",
-       x="Number of Covariats",
+       x="Number of Covariates",
        y = "Error Rate",
        color = "Method") +
   scale_color_manual(labels = c("Over-Bagging", "Under-Bagging"), 
@@ -608,7 +625,7 @@ Plot8 <- ggplot(data = ny_data, aes(y = shop_density, x = White.per.CenTrac)) +
   #geom_contour(aes(y = ys, x = xs, z=zs), 
   #             breaks=c(0,.5))
   labs(title="Decision Boundaries LDA",
-       x="Ethnicity White per CensusTrac",
+       x="Ethnicity White per Census Tract",
        y = "Shop Density in 1km Radius",
        color = "Method") +
   theme_gray() +
@@ -694,7 +711,7 @@ Plot9 <- ggplot(data = qda_performance) +
   geom_point(aes(x = Nr_Covariates, y = error, colour=method)) +
   geom_vline(xintercept = best_model_nr, linetype = "dotted", color = "Black", size = 0.5) +
   labs(title="Error Rate QDA",
-       x="Number of Covariats",
+       x="Number of Covariates",
        y = "Error Rate",
        color = "Method") +
   scale_color_manual(labels = c("Over-Bagging", "Under-Bagging"), 
@@ -728,7 +745,7 @@ Plot10 <- ggplot(data = lda_qda_performance) +
   geom_point(aes(x = Nr_Covariates, y = error, colour=method)) +
   geom_vline(xintercept = best_model_nr, linetype = "dotted", color = "Black", size = 0.5) +
   labs(title = "LDA vs QDA Error",
-       x="Number of Covariats",
+       x="Number of Covariates",
        y = "Error Rate",
        color = "Method") +
   scale_color_manual(labels = c("LDA Over-Bagging", "LDA Under-Bagging", "QDA Over-Bagging", "QDA Under-Bagging"), 
@@ -794,7 +811,7 @@ Plot11 <- ggplot(data = ny_data, aes(y = shop_density, x = White.per.CenTrac)) +
   #geom_contour(aes(y = ys, x = xs, z=zs), 
   #             breaks=c(0,.5))
   labs(title="Decision Boundaries QDA",
-       x="Ethnicity White per CenTrac",
+       x="Ethnicity White per Census Tract",
        y = "Shop Density in 1km Radius",
        color = "Method") +
   theme_gray() +
@@ -936,7 +953,7 @@ Plot12 <- ggplot(data = knn_performance) +
   geom_point(aes(x = k, y = error, colour=method)) +
   geom_vline(xintercept = best_model_k, linetype = "dotted", color = "Black", size = 0.5) +
   labs(title="Error Rate KNN",
-       x="Number of Covariats",
+       x="Number of Covariates",
        y = "Error Rate",
        color = "Method") +
   scale_color_manual(labels = c("Over-Bagging", "Under-Bagging"), 
@@ -1005,7 +1022,7 @@ Plot13 <- ggplot(data = ny_data, aes(y = shop_density, x = White.per.CenTrac)) +
   geom_point(data = grid_data, aes(color=pred_knn_plot), alpha=0.3, size = 0.5) +
   geom_point(aes(color=Inspection.Grade), alpha=1)+
   labs(title="Decision Boundaries KNN",
-       x="Ethnicity White per CenTrac",
+       x="Ethnicity White per Census Tract",
        y = "Shop Density in 1km Radius",
        color = "Method") +
   theme_gray() +
@@ -1035,8 +1052,9 @@ rm(g,
    plot13,
    sample)
 
+#########################################################################################
 
-###Random Forest------
+# Random Forest----######################################################################
 
 #transform to factors for random forest analysis
 ny_data$Inspection.Grade = as.factor(ny_data$Inspection.Grade)
@@ -1136,7 +1154,7 @@ for (i in 1:B) {
                          tuneGrid = tuneGrid, #calculate the best model using the tuning parameters
                          importance = "impurity") #to analyze the variable importance
   
-  bagging_error[index[i]:(index[i+1]-1),] = model_fit$results[,]
+  bagging_error[index[i]:(index[i+1]-1),] = without_model$results[,]
   
 }
 #call the above defined function to calculate the cross validated bagging errors
@@ -1274,7 +1292,9 @@ ice_subway_under <- optimal_model_rf_under  %>%
 
 gridExtra::grid.arrange(ice_subway_under, ice_subway_over, ncol = 2) #adds the two plots together in one row
 
-###Boosting-----
+#########################################################################################
+
+# Boosting-----##########################################################################
 
 #tuning parameter
 hyper_grid <- expand.grid(
@@ -1282,7 +1302,7 @@ hyper_grid <- expand.grid(
   max_depth = c(1, 3, 5, 7),
   min_child_weight = c(1, 3, 5, 7),
   subsample = c(.65, .8, 1), 
-  colsample_bytree = c(.8, .9, 1),
+  colsample_bytree = c(.8, .9, 1)
 )
 
 #set up function for applying the bagging to xgb
