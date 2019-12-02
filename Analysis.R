@@ -1,10 +1,27 @@
 # Header----#############################################################################
 
+# install.packages("rsample") # data splitting
+# install.packages("ranger")
+# install.packages("caret")
+# install.packages("pdp")
+# install.packages("vtreat")
+# install.packages("xgboost")
+# install.packages("h2o")
+
 library(tidyverse)
 library(plyr) # for ldply (similar to apply but output is a df not a list)
 library(MASS) # For Discriminant Analysis
 library(ISLR) # For Discriminant Analysis
 library(class) # For KNN
+library(randomForest) # basic implementation of random forests
+library(vtreat)
+library(pdp) # model visualization
+library(xgboost)
+library(h2o)
+library(rsample) # data splitting 
+library(ranger) # a faster implementation of random forests
+library(caret) # an aggregator package for performing many machine learning models
+
 
 #########################################################################################
 
