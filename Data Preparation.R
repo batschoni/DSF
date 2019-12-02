@@ -354,7 +354,7 @@ Plot1 <- ggmap(map_ny_state) +
         axis.text=element_text(size=12),
         axis.title=element_text(size=14,face="bold"))
 
-ggsave("./plots/Plot1_Map.png", plot = Plot1)
+ggsave("./plots/Plot1_Map.png", plot = Plot1, dpi = 300)
 
 
 # Plot2: Map of NY City with Shop Locations
@@ -374,7 +374,7 @@ Plot2 <- ggmap(map_nyc) +
         axis.text=element_text(size=12),
         axis.title=element_text(size=14,face="bold"))
 
-ggsave("./plots/Plot2_Map.png", plot = Plot2)
+ggsave("./plots/Plot2_Map.png", plot = Plot2, dpi = 300)
 
 # Plot of NY City with Subway Stations
 Plot3 <- ggmap(map_nyc) +
@@ -387,7 +387,7 @@ Plot3 <- ggmap(map_nyc) +
         axis.text=element_text(size=12),
         axis.title=element_text(size=14,face="bold"))
 
-ggsave("./plots/Plot3_Map.png", plot = Plot3)
+ggsave("./plots/Plot3_Map.png", plot = Plot3, dpi = 300)
 
 rm(subway_data)
 #########################################################################################

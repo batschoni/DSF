@@ -287,6 +287,11 @@ over_under_bagging <- function(df, Y, B, sample_size, FUN){
   return(Bag_err_final)
 }
 
+# The functions take a while to run
+# Already estimated errors can be loaded here
+laod("./Results/lda_under_error.RData")
+load("./Results/lda_over_error.RData")
+
 # implement LDA with under-bagging
 lda_under_bagging_error <- over_under_bagging(ny_data,
                                               Y = "Inspection.Grade",
@@ -303,16 +308,33 @@ lda_over_bagging_error <- over_under_bagging(ny_data,
                                              FUN = lda)
 save(lda_over_bagging_error, file = "./Results/lda_over_error.RData")
 
+# Determine the best model if under-bagging performs better
+if (min(lda_under_bagging_error[, 2]) < min(lda_over_bagging_error[, 2])) {
+  # get the number of the best model (to highlight in the plot)
+  best_model_nr <- which(lda_under_bagging_error[, 2] == min(lda_under_bagging_error[, 2]))
+  # get the formula of the best model
+  best_model <- lda_under_bagging_error[which(lda_under_bagging_error[, 2] == min(lda_under_bagging_error[, 2])), 1]
+  best_model <- as.character(best_model)
+  best_model <- as.formula(paste("Inspection.Grade", best_model, sep = " ~ "))
+  # Determine the best model if over-bagging performs better
+} else {
+  # get the number of the best model (to highlight in the plot)
+  best_model_nr <- which(lda_over_bagging_error[, 2] == min(lda_over_bagging_error[, 2]))
+  # get the formula of the best model
+  best_model <- lda_over_bagging_error[which(lda_over_bagging_error[, 2] == min(lda_over_bagging_error[, 2])), 1]
+  best_model <- as.character(best_model)
+  best_model <- as.formula(paste("Inspection.Grade", best_model, sep = " ~ "))
+}
+
 # Implementation with imbalanced data
-# (to show why it is an issue
+# (to show in Plot 4 why it is an issue)
 lda_imbal_error <- forward_stepwise_selection(ny_data,
                                                   Y = "Inspection.Grade",
                                                   FUN = lda,
                                                   K = 10)
-save(lda_imbal_error, file = "./Results/lda_imbal_error.RData")
 
 # Implementation without bagging
-# (to show why it is necessary)
+# (to show in Plot 4 why bagging is necessary)
 # 2 balanced subsets
 for(i in 1:2){
   # Create subsets of each class
@@ -333,13 +355,7 @@ for(i in 1:2){
                                                      K = 10))
 }
 
-save(lda_NO_bagging_error, file = "./Results/lda_NO_error.RData")
-
-# We stored the errors because it takes long to run
-laod("./Results/lda_under_error.RData")
-load("./Results/lda_over_error.RData")
-load("./Results/lda_NO_error.RData")
-
+# bind all errors to a tibble
 lda_performance <- as.tibble(cbind(Nr_Covariates = 1:(ncol(ny_data) - 1),
                                    lda_under_bagging_error = lda_under_bagging_error[, 2],
                                    lda_over_bagging_error =lda_over_bagging_error[, 2],
@@ -351,22 +367,52 @@ lda_performance <- as.tibble(cbind(Nr_Covariates = 1:(ncol(ny_data) - 1),
 lda_performance <- lda_performance %>%
   gather(method, error, c(lda_under_bagging_error,
                           lda_over_bagging_error,
-                          lda_NO_bagging_error,
+                          lda_NO_bagging_error_1,
+                          lda_NO_bagging_error_2,
                           lda_imbal_error))
 
-# Create Error plot
-ggplot(data = lda_performance) +
+# error plot to illustrate the usefulness of over- / under-bagging
+Plot4 <- ggplot(data = lda_performance) +
   geom_line(aes(x = Nr_Covariates, y = error, colour=method)) +
-  geom_point(aes(x = Nr_Covariates, y = error, colour=method))
+  geom_point(aes(x = Nr_Covariates, y = error, colour=method)) +
+  geom_vline(xintercept = best_model_nr, linetype = "dotted", color = "Black", size = 0.5) +
   labs(title="Prediction Rate LDA",
        x="Number of Covariats",
-       y = "Error Rate") +
+       y = "Error Rate",
+       color = "Method") +
   theme(legend.position="right") +
-  #scale_color_manual(labels = c("No Bagging", "Over-Bagging", "Under-Bagging"), 
-  #                   values = c("green", "blue", "red")) +
+  scale_color_manual(labels = c("Imbalanced", "No Bagging 1", "No Bagging 2","Over-Bagging", "Under-Bagging"), 
+                     values = c("green", "blue", "red", "brown", "orange")) +
   theme_gray()
 
-save(lda_error, file = "./Results/lda_error.RData")
+ggsave("./plots/Plot4_Method.png", plot = Plot4, width = 7, height = 4, dpi = 300)
+
+
+# bind all errors to a tibble
+lda_performance <- as.tibble(cbind(Nr_Covariates = 1:(ncol(ny_data) - 1),
+                                   lda_under_bagging_error = lda_under_bagging_error[, 2],
+                                   lda_over_bagging_error =lda_over_bagging_error[, 2]))
+
+# reshap to long format (for ggplot2)
+lda_performance <- lda_performance %>%
+  gather(method, error, c(lda_under_bagging_error,
+                          lda_over_bagging_error))
+
+# error plot LDA
+Plot5 <- ggplot(data = lda_performance) +
+  geom_line(aes(x = Nr_Covariates, y = error, colour=method)) +
+  geom_point(aes(x = Nr_Covariates, y = error, colour=method)) +
+  geom_vline(xintercept = best_model_nr, linetype = "dotted", color = "Black", size = 0.5) +
+  labs(title="Prediction Rate LDA",
+       x="Number of Covariats",
+       y = "Error Rate",
+       color = "Method") +
+  theme(legend.position="right") +
+  scale_color_manual(labels = c("Over-Bagging", "Under-Bagging"), 
+                     values = c("green", "blue")) +
+  theme_gray()
+
+ggsave("./plots/Plot5_LDA_Error.png", plot = Plot5, width = 7, height = 4, dpi = 300)
 
 rm(lda_over_bagging_error, lda_under_bagging_error)
 rm(i, j, covariates, covariates_comb)
@@ -374,7 +420,16 @@ rm(i, j, covariates, covariates_comb)
 
 # LDA Estimate Selected Model----
 #########################################################################################
-set.seed(1234)
+# Now we implement the best model we have selected before
+
+# Initialize grid values for plots
+resolution = 200
+r <- sapply(ny_data[c("shop_density", "White.per.CenTrac")], range, na.rm = TRUE)
+xs <- seq(r[1,1], r[2,1], length.out = resolution)
+ys <- seq(r[1,2], r[2,2], length.out = resolution)
+g <- cbind(rep(xs, each=resolution), rep(ys, time = resolution))
+colnames(g) <- colnames(r)
+g <- as.data.frame(g)
 
 # Returns a bagging sample
 bagging_sample <- function(df, Y, sample_size){
@@ -407,12 +462,13 @@ for (i in 1:B){
                  Y = "Inspection.Grade",
                  sample_size = c(700, 700, 700))
   # fits the model with the bagging sample
-  model_fit <- lda(Inspection.Grade~shop_density + count, data = sample)
+  model_fit <- lda(best_model, data = sample)
   bagged_models <- c(bagged_models, list(model_fit))
   # predicts the values for the entire dataset
   model_pred <- predict(model_fit, newdata = ny_data)
   bagged_predictions[, i] <- model_pred$class
-  # predicts the values for the generated plot points
+  # fit and predicts the values for the generated plot points
+  model_fit <- lda(Inspection.Grade~shop_density + White.per.CenTrac, data = sample)
   model_pred <- predict(model_fit, newdata = g)
   bagged_predictions_plot[, i] <- model_pred$class
 }
@@ -431,15 +487,7 @@ pred_lda_plot <- factor(pred_lda_plot, levels = c(3, 2, 1), labels = c("A", "B",
 rm(maj_vote, sample, model_fit, model_pred, B, i)
 
 
-# Grid values
-data = ny_data
-resolution = 200
-r <- sapply(data[c("shop_density", "count")], range, na.rm = TRUE)
-xs <- seq(r[1,1], r[2,1], length.out = resolution)
-ys <- seq(r[1,2], r[2,2], length.out = resolution)
-g <- cbind(rep(xs, each=resolution), rep(ys, time = resolution))
-colnames(g) <- colnames(r)
-g <- as.data.frame(g)
+
 # Grid data
 grid_data <- cbind(pred_lda_plot, g)
 grid_data <- as.data.frame(grid_data)
@@ -447,11 +495,11 @@ grid_data <- as.data.frame(grid_data)
 dec_border <- matrix(as.integer(lda_pred), nrow = resolution, byrow = TRUE)
 zs <- lda_pred$post[, c("A","B")] %*% c(1,1)
 
-ggplot(data = data, aes(y = shop_density, x = count)) +
+ggplot(data = ny_data, aes(y = shop_density, x = White.per.CenTrac)) +
   geom_point(data = grid_data, aes(color=pred_lda_plot), alpha=0.3, size = 0.5) +
   geom_point(aes(color=Inspection.Grade), alpha=1)+
-  #geom_contour(aes(y = ys, x = xs, z=zs), 
-  #             breaks=c(0,.5))
+  geom_contour(aes(y = ys, x = xs, z=zs), 
+               breaks=c(0,.5))
   theme_gray()
 
 rm(g, grid_data, r, lda_pred, resolution, xs, ys, dec_border, zs)
