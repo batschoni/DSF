@@ -1,1 +1,12 @@
 \BOOKMARK [1][-]{section*.3}{List of Figures}{}% 1
+\BOOKMARK [1][-]{section.1}{Einleitung}{}% 2
+\BOOKMARK [1][-]{section.2}{Data Cleaning and Preparation}{}% 3
+\BOOKMARK [1][-]{section.3}{New York Inspection Data}{}% 4
+\BOOKMARK [1][-]{section.4}{Chain Information}{}% 5
+\BOOKMARK [1][-]{section.5}{Spatial Data}{}% 6
+\BOOKMARK [1][-]{section.6}{Subway Data}{}% 7
+\BOOKMARK [2][-]{subsection.6.1}{Google web scraper}{section.6}% 8
+\BOOKMARK [2][-]{subsection.6.2}{Airbnb data and spatial analysis}{section.6}% 9
+\BOOKMARK [1][-]{section.7}{Random Forest Analysis}{}% 10
+\BOOKMARK [1][-]{section.8}{Gradient Boosting}{}% 11
+\BOOKMARK [1][-]{section.9}{Zusammenfassung und Diskussion der Resultate}{}% 12

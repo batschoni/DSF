@@ -1136,7 +1136,7 @@ for (i in 1:B) {
                          tuneGrid = tuneGrid, #calculate the best model using the tuning parameters
                          importance = "impurity") #to analyze the variable importance
   
-  bagging_error[index[i]:(index[i+1]-1),] = model_fit$results[,]
+  bagging_error[index[i]:(index[i+1]-1),] = without_model$results[,]
   
 }
 #call the above defined function to calculate the cross validated bagging errors
