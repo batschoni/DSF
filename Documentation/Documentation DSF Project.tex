@@ -134,13 +134,13 @@ C &228 & 26 & 103 \\
 \end{tabular}
 \quad
 \begin{tabular}{ l | c c c}
-\multicolumn{4}{c}{QDA} \\
+\multicolumn{4}{c}{KNN} \\
 \hline
 Obs / \\ Pred & A & B &C \\
 \hline
-A &2839 & 462 & 1164 \\
-B &1260 & 173 & 594 \\
-C &228 & 26 & 103 \\
+A &1464 & 204 & 470 \\
+B &1928 & 335 & 885 \\
+C &935 & 122 & 506 \\
 \hline
 \end{tabular}
 \qquad
@@ -159,6 +159,7 @@ C &228 & 26 & 103 \\
 
 \subsection{K-Nearest Neighbor}
 
+<<<<<<< HEAD
 Next, we implemented K-Nearest Neighbor (knn). First, we tried to implement knn similar to the discriminant analysis with backward stepwise selection. However, we realized that the function only allows up to 1000 neighbors which creates an error for discrete variables with low variance.
 
 \section{Random Forest Analysis}
@@ -200,6 +201,22 @@ Another possibility to
 As a further method of tree based models we implemented extreme gradient boosting. It enables a better performance than random forest and provides more advanced tuning methods. The selected parameters have XXX different combinations which have to be evaluated. The current approach with a full hyper grid search is computationally very intensive and takes several days with an ordinary computer. Another possibility is to use a random discrete search which does not test all combinations but a sample of it with a stopping parameter. Thus this would have meant to implement another package and due to time restrictions was entirely finished.
 
 
+=======
+Next, we implemented K-Nearest Neighbor (KNN). First, we tried to implement KNN similar to the discriminant analysis and adjusted our backward stepwise selection function for that purpose. However, a restriction in the KNN function only allows up to 1000 neighbors which creates an error for discrete variables with low variance. Therefore, we used all covariates instead and estimated the error for different k again with OU-bagging.\\
+\\
+Panel-(a) in Figure~\ref{knn} shows the estimated bagged-CV-error for different k. The lowest error is achieved with a k of 48. OU-bagging performed de facto equally well. We estimated the best model with k equal to 48 and over-bagging. The resulted error rate of 66\% is quite higher than the estimated bagged-CV-error of 37\%. The prediction matrix of Table~\ref{pred-matrix} shows that knn again overweights the minority classes B and C.\\
+\\
+\begin{figure}
+\captionof{figure}{Geographic Distribution of the inspected Shops \label{knn}} 
+\subfloat[KNN Errors]{%
+       \includegraphics[width=0.5\textwidth]{Plots/Plot12_KNN_Error.png}
+     }
+     \hfill
+     \subfloat[Decision Boundaries KNN]{%
+       \includegraphics[width=0.5\textwidth]{Plots/Plot13_KNN_Boundaries.png}
+     }
+\end{figure}
+>>>>>>> 43f8e1438f298b3386c0aff2cc273ffbcacc27ab
 \section{Conclusion}
 --> Wrong predictors
 

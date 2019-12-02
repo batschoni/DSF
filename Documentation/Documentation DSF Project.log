@@ -1,4 +1,8 @@
+<<<<<<< HEAD
 This is pdfTeX, Version 3.14159265-2.6-1.40.18 (TeX Live 2017) (preloaded format=pdflatex 2018.2.14)  2 DEC 2019 21:00
+=======
+This is pdfTeX, Version 3.14159265-2.6-1.40.17 (TeX Live 2016) (preloaded format=pdflatex 2017.4.11)  2 DEC 2019 20:59
+>>>>>>> 43f8e1438f298b3386c0aff2cc273ffbcacc27ab
 entering extended mode
  restricted \write18 enabled.
  file:line:error style messages enabled.
@@ -480,7 +484,11 @@ File: english.apc 2013/07/21 v6.03 apacite language file
 LaTeX Info: Redefining \BPBI on input line 129.
 LaTeX Info: Redefining \BHBI on input line 130.
 )
+<<<<<<< HEAD
 <Cover.pdf, id=52, 597.50829pt x 845.0471pt>
+=======
+<Cover.pdf, id=68, 597.50829pt x 845.0471pt>
+>>>>>>> 43f8e1438f298b3386c0aff2cc273ffbcacc27ab
 File: Cover.pdf Graphic file (type pdf)
  <use Cover.pdf>
 Package pdftex.def Info: Cover.pdf used on input line 24.
@@ -490,7 +498,11 @@ File: Cover.pdf Graphic file (type pdf)
 Package pdftex.def Info: Cover.pdf used on input line 24.
 (pdftex.def)             Requested size: 597.50682pt x 845.04504pt.
 
+<<<<<<< HEAD
 <Cover.pdf, id=55, page=1, 597.50829pt x 845.0471pt>
+=======
+<Cover.pdf, id=71, page=1, 597.50829pt x 845.0471pt>
+>>>>>>> 43f8e1438f298b3386c0aff2cc273ffbcacc27ab
 File: Cover.pdf Graphic file (type pdf)
  <use Cover.pdf, page 1>
 Package pdftex.def Info: Cover.pdf, page1 used on input line 24.
@@ -531,14 +543,22 @@ Underfull \hbox (badness 10000) in paragraph at lines 35--38
 
  []
 
+<<<<<<< HEAD
 [2] <Plots/Plot1_Map.png, id=103, 2218.2875pt x 1542.76375pt>
+=======
+[2] <Plots/Plot1_Map.png, id=119, 2218.2875pt x 1542.76375pt>
+>>>>>>> 43f8e1438f298b3386c0aff2cc273ffbcacc27ab
 File: Plots/Plot1_Map.png Graphic file (type png)
 
 <use Plots/Plot1_Map.png>
 Package pdftex.def Info: Plots/Plot1_Map.png used on input line 50.
 (pdftex.def)             Requested size: 234.8775pt x 163.34856pt.
 
+<<<<<<< HEAD
 <Plots/Plot2_Map.png, id=105, 2176.13pt x 1784.6675pt>
+=======
+<Plots/Plot2_Map.png, id=121, 2176.13pt x 1784.6675pt>
+>>>>>>> 43f8e1438f298b3386c0aff2cc273ffbcacc27ab
 File: Plots/Plot2_Map.png Graphic file (type png)
 
 <use Plots/Plot2_Map.png>
@@ -549,9 +569,147 @@ Overfull \hbox (7.29997pt too wide) in paragraph at lines 50--55
 [][] [][][][] 
  []
 
+<<<<<<< HEAD
 
 Package natbib Warning: Citation `haversine' on page 3 undefined on input line 
 56.
+=======
+[3 <./Plots/Plot1_Map.png> <./Plots/Plot2_Map.png>]
+Underfull \hbox (badness 10000) in paragraph at lines 66--73
+
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 66--73
+
+ []
+
+[4]
+Underfull \hbox (badness 10000) in paragraph at lines 76--77
+
+ []
+
+[5] [6] <Plots/Plot10_LDA_QDA_Error.png, id=171, 2048.65375pt x 1166.3575pt>
+File: Plots/Plot10_LDA_QDA_Error.png Graphic file (type png)
+
+<use Plots/Plot10_LDA_QDA_Error.png>
+Package pdftex.def Info: Plots/Plot10_LDA_QDA_Error.png used on input line 113.
+
+(pdftex.def)             Requested size: 234.8775pt x 133.71005pt.
+
+<Plots/Plot11_QDA_Boundaries.png, id=172, 2046.64626pt x 1167.36125pt>
+File: Plots/Plot11_QDA_Boundaries.png Graphic file (type png)
+
+<use Plots/Plot11_QDA_Boundaries.png>
+Package pdftex.def Info: Plots/Plot11_QDA_Boundaries.png used on input line 117
+.
+(pdftex.def)             Requested size: 234.8775pt x 133.96762pt.
+
+Overfull \hbox (7.29997pt too wide) in paragraph at lines 113--118
+[][] [][][][] 
+ []
+
+
+Package caption Warning: \captionsetup{type*=...} or \captionof
+(caption)                outside box or environment on input line 122.
+See the caption package documentation for explanation.
+
+
+Package caption Warning: The option `hypcap=true' will be ignored for this
+(caption)                particular \caption on input line 122.
+See the caption package documentation for explanation.
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 107--122
+
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 107--122
+
+ []
+
+[7] <Plots/Plot12_KNN_Error.png, id=185, 2107.875pt x 1204.5pt>
+File: Plots/Plot12_KNN_Error.png Graphic file (type png)
+
+<use Plots/Plot12_KNN_Error.png>
+Package pdftex.def Info: Plots/Plot12_KNN_Error.png used on input line 170.
+(pdftex.def)             Requested size: 234.8775pt x 134.20467pt.
+
+<Plots/Plot13_KNN_Boundaries.png, id=186, 2107.875pt x 1204.5pt>
+File: Plots/Plot13_KNN_Boundaries.png Graphic file (type png)
+
+<use Plots/Plot13_KNN_Boundaries.png>
+Package pdftex.def Info: Plots/Plot13_KNN_Boundaries.png used on input line 174
+.
+(pdftex.def)             Requested size: 234.8775pt x 134.20467pt.
+
+Overfull \hbox (7.29997pt too wide) in paragraph at lines 170--175
+[][] [][][][] 
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 162--176
+
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 162--176
+
+ []
+
+[8 <./Plots/Plot10_LDA_QDA_Error.png> <./Plots/Plot11_QDA_Boundaries.png>]
+[9 <./Plots/Plot12_KNN_Error.png> <./Plots/Plot13_KNN_Boundaries.png>]
+(./Documentation DSF Project.bbl)
+
+Package natbib Warning: There were undefined citations.
+
+Package atveryend Info: Empty hook `BeforeClearDocument' on input line 185.
+[10]
+Package atveryend Info: Empty hook `AfterLastShipout' on input line 185.
+ (./Documentation DSF Project.aux)
+Package atveryend Info: Executing hook `AtVeryEndDocument' on input line 185.
+Package atveryend Info: Executing hook `AtEndAfterFileList' on input line 185.
+Package rerunfilecheck Info: File `"Documentation DSF Project".out' has not cha
+nged.
+(rerunfilecheck)             Checksum: 28BB9188F34E56E0023421B35CAB92D4;1046.
+Package atveryend Info: Empty hook `AtVeryVeryEnd' on input line 185.
+ ) 
+Here is how much of TeX's memory you used:
+ 9454 strings out of 493014
+ 139655 string characters out of 6133351
+ 251695 words of memory out of 5000000
+ 12843 multiletter control sequences out of 15000+600000
+ 10843 words of font info for 40 fonts, out of 8000000 for 9000
+ 1141 hyphenation exceptions out of 8191
+ 44i,18n,49p,966b,456s stack positions out of 5000i,500n,10000p,200000b,80000s
+</usr/local/texlive/2016/texmf-dist/fonts/type1/public/amsfonts/cm/cmbx10.pfb
+></usr/local/texlive/2016/texmf-dist/fonts/type1/public/amsfonts/cm/cmbx12.pfb>
+</usr/local/texlive/2016/texmf-dist/fonts/type1/public/amsfonts/cm/cmex10.pfb><
+/usr/local/texlive/2016/texmf-dist/fonts/type1/public/amsfonts/cm/cmmi10.pfb></
+usr/local/texlive/2016/texmf-dist/fonts/type1/public/amsfonts/cm/cmmi8.pfb></us
+r/local/texlive/2016/texmf-dist/fonts/type1/public/amsfonts/cm/cmr10.pfb></usr/
+local/texlive/2016/texmf-dist/fonts/type1/public/amsfonts/cm/cmr6.pfb></usr/loc
+al/texlive/2016/texmf-dist/fonts/type1/public/amsfonts/cm/cmr8.pfb></usr/local/
+texlive/2016/texmf-dist/fonts/type1/public/amsfonts/cm/cmr9.pfb></usr/local/tex
+live/2016/texmf-dist/fonts/type1/public/amsfonts/cm/cmsy10.pfb></usr/local/texl
+ive/2016/texmf-dist/fonts/type1/public/amsfonts/cm/cmsy8.pfb></usr/local/texliv
+e/2016/texmf-dist/fonts/type1/public/amsfonts/cm/cmti10.pfb></usr/local/texlive
+/2016/texmf-dist/fonts/type1/public/amsfonts/cm/cmtt10.pfb></usr/local/texlive/
+2016/texmf-dist/fonts/type1/public/amsfonts/cm/cmtt9.pfb></usr/local/texlive/20
+16/texmf-dist/fonts/type1/public/cm-super/sfbx2488.pfb></usr/local/texlive/2016
+/texmf-dist/fonts/type1/public/cm-super/sfcc1200.pfb></usr/local/texlive/2016/t
+exmf-dist/fonts/type1/public/cm-super/sfcc1728.pfb></usr/local/texlive/2016/tex
+mf-dist/fonts/type1/public/cm-super/sfcc2074.pfb></usr/local/texlive/2016/texmf
+-dist/fonts/type1/public/cm-super/sfrm1200.pfb></usr/local/texlive/2016/texmf-d
+ist/fonts/type1/public/cm-super/sfrm1440.pfb>
+Output written on "Documentation DSF Project.pdf" (10 pages, 11294799 bytes).
+PDF statistics:
+ 275 PDF objects out of 1000 (max. 8388607)
+ 224 compressed objects within 3 object streams
+ 46 named destinations out of 1000 (max. 500000)
+ 179 words of extra memory for PDF output out of 10000 (max. 10000000)
+>>>>>>> 43f8e1438f298b3386c0aff2cc273ffbcacc27ab
 
 [3 <./Plots/Plot1_Map.png> <./Plots/Plot2_Map.png>]
 Underfull
